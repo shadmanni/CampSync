@@ -1,29 +1,25 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { colors, radii, spacing, typography } from "../../theme/theme";
+import { colors, radii, typography } from "../../theme/theme";
 
-export const StatusBadge = ({ label, variant = "emerald", dot = true, style }) => {
+export const StatusBadge = ({ label, variant = "violet", dot = false }) => {
   const getColors = () => {
     switch (variant) {
-      case "cyan":
-        return { bg: "rgba(6, 182, 212, 0.15)", text: colors.accentCyan, dot: colors.accentCyan };
-      case "emerald":
-        return { bg: "rgba(16, 185, 129, 0.15)", text: colors.accentEmerald, dot: colors.accentEmerald };
-      case "amber":
-        return { bg: "rgba(245, 158, 11, 0.15)", text: colors.accentAmber, dot: colors.accentAmber };
-      case "rose":
-        return { bg: "rgba(244, 63, 94, 0.15)", text: colors.accentRose, dot: colors.accentRose };
-      case "primary":
-      default:
-        return { bg: "rgba(99, 102, 241, 0.15)", text: colors.primaryLight, dot: colors.primary };
+      case "violet": return { bg: colors.violetSoft, text: colors.violet };
+      case "coral": return { bg: colors.coralSoft, text: colors.coral };
+      case "mint": return { bg: colors.mintSoft, text: colors.mint };
+      case "sky": return { bg: colors.skySoft, text: colors.sky };
+      case "sun": return { bg: colors.sunSoft, text: colors.ink };
+      case "rose": return { bg: colors.roseSoft, text: colors.rose };
+      default: return { bg: colors.surfaceInset, text: colors.ink };
     }
   };
 
   const scheme = getColors();
 
   return (
-    <View style={[styles.badge, { backgroundColor: scheme.bg }, style]}>
-      {dot && <View style={[styles.dot, { backgroundColor: scheme.dot }]} />}
+    <View style={[styles.badge, { backgroundColor: scheme.bg }]}>
+      {dot && <View style={[styles.dot, { backgroundColor: scheme.text }]} />}
       <Text style={[styles.text, { color: scheme.text }]}>{label}</Text>
     </View>
   );
@@ -34,9 +30,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radii.full,
-    alignSelf: "flex-start"
+    paddingVertical: 3,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.line
   },
   dot: {
     width: 6,
@@ -46,7 +43,6 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.badge,
-    fontSize: 10,
-    textTransform: "uppercase"
+    fontSize: 11
   }
 });

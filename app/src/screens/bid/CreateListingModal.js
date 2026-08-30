@@ -6,103 +6,111 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Switch,
   ScrollView,
   KeyboardAvoidingView,
   Platform
 } from "react-native";
-import { X, Send, Shield, Sparkles } from "lucide-react-native";
+import { X, Plus, Tag, Sparkles } from "lucide-react-native";
 import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
-import { connectService } from "../../services/connectService";
+import { bidService } from "../../services/bidService";
 import { useAuth } from "../../context/AuthContext";
 import { PopButton } from "../../components/common/PopButton";
-import { PopCard } from "../../components/common/PopCard";
 
-const CATEGORIES = ["Academic", "General", "Lost & Found"];
+const BID_CATEGORIES = ["Electronics", "Textbooks", "Hostel Gear", "Cycles", "Fashion"];
 
-export const CreatePostModal = ({ visible, onClose, onCreated }) => {
+export const CreateListingModal = ({ visible, onClose, onCreated }) => {
   const { user } = useAuth();
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [category, setCategory] = useState("Academic");
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Electronics");
+  const [type, setType] = useState("AUCTION"); // 'AUCTION' | 'FIXED'
+  const [price, setPrice] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleCreate = async () => {
     setErrorMsg("");
     if (!title.trim()) {
-      setErrorMsg("Please enter a discussion title.");
+      setErrorMsg("Please enter an item title.");
       return;
     }
-    if (!content.trim()) {
-      setErrorMsg("Please enter the discussion content.");
+    const numPrice = Number(price);
+    if (isNaN(numPrice) || numPrice <= 0) {
+      setErrorMsg("Please enter a valid starting price in ₹.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const newPost = await connectService.createPost({
+      const newItem = await bidService.createItem({
         title: title.trim(),
-        content: content.trim(),
+        description: description.trim(),
         category,
-        isAnonymous,
-        authorName: user?.name || "Verified Student"
+        type,
+        startingPrice: numPrice,
+        sellerName: user?.name || "Verified Student",
+        department: user?.department || "Computer Science"
       });
 
       setSubmitting(false);
       setTitle("");
-      setContent("");
-      setIsAnonymous(false);
-      onCreated(newPost);
+      setDescription("");
+      setPrice("");
+      onCreated(newItem);
       onClose();
     } catch (err) {
       setSubmitting(false);
-      setErrorMsg(err.message || "Failed to publish post.");
+      setErrorMsg(err.message || "Failed to create listing.");
     }
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.overlay}
       >
         <View style={styles.modalContent}>
-          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>New Discussion</Text>
+            <Text style={styles.headerTitle}>List Marketplace Item</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <X size={18} color={colors.ink} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.formScroll} keyboardShouldPersistTaps="handled">
+          <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
+            {/* Listing Type Toggle */}
+            <Text style={styles.fieldLabel}>LISTING FORMAT</Text>
+            <View style={styles.typeRow}>
+              <TouchableOpacity
+                style={[styles.typeBtn, type === "AUCTION" && styles.typeBtnActive]}
+                onPress={() => setType("AUCTION")}
+              >
+                <Text style={[styles.typeText, type === "AUCTION" && styles.typeTextActive]}>
+                  ⚡ Live Auction
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.typeBtn, type === "FIXED" && styles.typeBtnActive]}
+                onPress={() => setType("FIXED")}
+              >
+                <Text style={[styles.typeText, type === "FIXED" && styles.typeTextActive]}>
+                  🏷️ Fixed Price
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Category */}
             <Text style={styles.fieldLabel}>CATEGORY</Text>
-            <View style={styles.categoryRow}>
-              {CATEGORIES.map((cat) => (
+            <View style={styles.catGrid}>
+              {BID_CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat}
-                  style={[
-                    styles.catPill,
-                    category === cat && styles.catPillActive
-                  ]}
+                  style={[styles.catPill, category === cat && styles.catPillActive]}
                   onPress={() => setCategory(cat)}
-                  activeOpacity={0.8}
                 >
-                  <Text
-                    style={[
-                      styles.catText,
-                      category === cat && styles.catTextActive
-                    ]}
-                  >
+                  <Text style={[styles.catText, category === cat && styles.catTextActive]}>
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -110,56 +118,49 @@ export const CreatePostModal = ({ visible, onClose, onCreated }) => {
             </View>
 
             {/* Title */}
-            <Text style={styles.fieldLabel}>TOPIC TITLE</Text>
+            <Text style={styles.fieldLabel}>ITEM NAME</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Algorithms midterm study group?"
+              placeholder="e.g. Sony Noise-Canceling Headphones"
               placeholderTextColor={colors.inkFaint}
               value={title}
               onChangeText={setTitle}
             />
 
-            {/* Content */}
-            <Text style={styles.fieldLabel}>DETAILS</Text>
+            {/* Price */}
+            <Text style={styles.fieldLabel}>
+              {type === "AUCTION" ? "STARTING BID (₹)" : "SELLING PRICE (₹)"}
+            </Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Provide background context, question specifics, or venue notes..."
+              style={styles.input}
+              placeholder="e.g. 500"
               placeholderTextColor={colors.inkFaint}
-              value={content}
-              onChangeText={setContent}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
+              value={price}
+              onChangeText={setPrice}
+              keyboardType="number-pad"
             />
 
-            {/* Anonymous Toggle */}
-            <PopCard style={styles.anonCard} variant="inset">
-              <View style={styles.anonLeft}>
-                <Shield size={18} color={isAnonymous ? colors.violet : colors.inkFaint} />
-                <View style={styles.anonMeta}>
-                  <Text style={styles.anonTitle}>Post Anonymously</Text>
-                  <Text style={styles.anonSubtitle}>
-                    Hide your name while keeping university verification
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={isAnonymous}
-                onValueChange={setIsAnonymous}
-                trackColor={{ false: colors.line, true: colors.violet }}
-                thumbColor={colors.surface}
-              />
-            </PopCard>
+            {/* Description */}
+            <Text style={styles.fieldLabel}>DESCRIPTION & CONDITION</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Describe condition, pickup location (e.g. Hostel Block C), accessories..."
+              placeholderTextColor={colors.inkFaint}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={3}
+            />
 
             {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
             <PopButton
-              title="Publish Discussion"
+              title="Publish Listing"
               onPress={handleCreate}
               loading={submitting}
-              variant="violet"
+              variant="coral"
               size="lg"
-              icon={<Send size={18} color={colors.surface} />}
+              icon={<Plus size={18} color={colors.surface} />}
               style={styles.submitBtn}
             />
           </ScrollView>
@@ -210,7 +211,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     ...shadows.hardSm
   },
-  formScroll: {
+  body: {
     padding: spacing.containerPadding
   },
   fieldLabel: {
@@ -219,28 +220,56 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginBottom: 6
   },
-  categoryRow: {
+  typeRow: {
     flexDirection: "row",
     gap: spacing.sm,
     marginBottom: spacing.lg
   },
+  typeBtn: {
+    flex: 1,
+    backgroundColor: colors.surface2,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    alignItems: "center"
+  },
+  typeBtnActive: {
+    backgroundColor: colors.coral,
+    borderColor: colors.borderInk,
+    ...shadows.hardSm
+  },
+  typeText: {
+    ...typography.badge,
+    color: colors.inkSoft,
+    fontSize: 13
+  },
+  typeTextActive: {
+    color: colors.surface
+  },
+  catGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.lg
+  },
   catPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: radii.pill,
     backgroundColor: colors.surface2,
     borderWidth: 1.5,
     borderColor: colors.line
   },
   catPillActive: {
-    backgroundColor: colors.violet,
+    backgroundColor: colors.coral,
     borderColor: colors.borderInk,
     ...shadows.hardSm
   },
   catText: {
     ...typography.badge,
-    color: colors.inkSoft,
-    fontSize: 12
+    fontSize: 11.5,
+    color: colors.inkSoft
   },
   catTextActive: {
     color: colors.surface
@@ -258,33 +287,7 @@ const styles = StyleSheet.create({
     ...shadows.hardSm
   },
   textArea: {
-    minHeight: 90
-  },
-  anonCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: spacing.md,
-    marginBottom: spacing.lg
-  },
-  anonLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginRight: spacing.sm
-  },
-  anonMeta: {
-    marginLeft: spacing.sm,
-    flex: 1
-  },
-  anonTitle: {
-    ...typography.badge,
-    fontSize: 13,
-    color: colors.ink
-  },
-  anonSubtitle: {
-    ...typography.bodySm,
-    fontSize: 10.5
+    minHeight: 80
   },
   errorText: {
     ...typography.bodySm,

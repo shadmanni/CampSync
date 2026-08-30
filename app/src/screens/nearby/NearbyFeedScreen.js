@@ -6,8 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Clipboard,
-  Alert
+  TextInput
 } from "react-native";
 import {
   Compass,
@@ -15,36 +14,44 @@ import {
   MapPin,
   Tag,
   Copy,
-  Check
+  Check,
+  Search,
+  Sparkles
 } from "lucide-react-native";
 import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { nearbyService } from "../../services/nearbyService";
-import { PopHeader } from "../../components/common/PopHeader";
+import { HeaderBar } from "../../components/common/HeaderBar";
 import { PopCard } from "../../components/common/PopCard";
 import { PopPill } from "../../components/common/PopPill";
 import { PopButton } from "../../components/common/PopButton";
+import { SkeletonLoader } from "../../components/common/SkeletonLoader";
+import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
 
-const NEARBY_CATEGORIES = ["All", "Food & Cafe", "Books & Print", "Fitness", "Tech"];
+const NEARBY_CATEGORIES = ["All Perks", "Food & Cafe", "Books & Print", "Fitness", "Tech"];
 
-export const NearbyFeedScreen = ({ navigation }) => {
-  const [selectedCategory, setSelectedCategory] = useState("All");
+export const NearbyFeedScreen = () => {
   const [deals, setDeals] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("All Perks");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
   const [copiedCode, setCopiedCode] = useState(null);
 
   const fetchDeals = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
-      const data = await nearbyService.getDeals(selectedCategory);
+      const data = await nearbyService.getDeals(selectedCategory, searchQuery);
       setDeals(data || []);
     } catch (err) {
-      console.warn("Failed to load nearby deals:", err.message);
+      setError(err.message || "Failed to load partner deals.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, searchQuery]);
 
   useEffect(() => {
     fetchDeals();
@@ -66,53 +73,77 @@ export const NearbyFeedScreen = ({ navigation }) => {
     return (
       <PopCard style={styles.card}>
         <View style={styles.cardTop}>
-          <View style={styles.discountBadge}>
-            <Percent size={12} color="#FFFFFF" />
-            <Text style={styles.discountText}>{item.discount || "20% OFF"}</Text>
+          <View style={[styles.discountBadge, { backgroundColor: colors.skySoft }]}>
+            <Percent size={13} color={colors.sky} />
+            <Text style={styles.discountText}>{item.discount || "DEAL"}</Text>
           </View>
           <View style={styles.distanceBadge}>
-            <MapPin size={12} color={colors.sky} />
-            <Text style={styles.distanceText}>{item.distance || "0.4 km away"}</Text>
+            <MapPin size={12} color={colors.inkFaint} />
+            <Text style={styles.distanceText}>{item.distance || "Near Campus"}</Text>
           </View>
         </View>
 
-        <Text style={styles.storeName}>{item.storeName}</Text>
+        <Text style={styles.storeName}>{item.storeName || item.title}</Text>
         <Text style={styles.description}>{item.description}</Text>
 
         {/* Promo Code Box */}
-        <View style={styles.couponBox}>
-          <View>
-            <Text style={styles.couponLabel}>PROMO CODE</Text>
-            <Text style={styles.couponCode}>{item.couponCode || "CAMPUS20"}</Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.copyBtn, isCopied && styles.copyBtnSuccess]}
-            onPress={() => handleCopy(item.couponCode || "CAMPUS20")}
-            activeOpacity={0.8}
-          >
-            {isCopied ? <Check size={13} color="#FFFFFF" /> : <Copy size={13} color={colors.ink} />}
-            <Text style={[styles.copyText, isCopied && { color: "#FFFFFF" }]}>
-              {isCopied ? "Copied!" : "Copy Code"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {item.couponCode ? (
+          <PopCard style={styles.couponCard} variant="inset">
+            <View>
+              <Text style={styles.couponLabel}>PROMO CODE</Text>
+              <Text style={styles.couponCode}>{item.couponCode}</Text>
+            </View>
 
-        <Text style={styles.validText}>{item.validTill || "Show college ID at billing counter"}</Text>
+            <TouchableOpacity
+              style={[styles.copyBtn, isCopied && styles.copyBtnSuccess]}
+              onPress={() => handleCopy(item.couponCode)}
+              activeOpacity={0.8}
+            >
+              {isCopied ? (
+                <>
+                  <Check size={13} color={colors.surface} />
+                  <Text style={styles.copyTextSuccess}>Copied!</Text>
+                </>
+              ) : (
+                <>
+                  <Copy size={13} color={colors.ink} />
+                  <Text style={styles.copyText}>Copy</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </PopCard>
+        ) : null}
+
+        <View style={styles.cardFooter}>
+          <Text style={styles.validText}>{item.validTill || "Valid with College ID"}</Text>
+        </View>
       </PopCard>
     );
   };
 
   return (
     <View style={styles.container}>
-      <PopHeader
+      <HeaderBar
         title="CampusNearby"
-        subtitle="Exclusive Student Discounts"
+        subtitle="Exclusive Local Student Discounts"
         accentColor={colors.sky}
-        onProfilePress={() => navigation.navigate("Profile")}
+        onNotificationPress={() => {}}
       />
 
-      {/* Category Pills */}
-      <View style={styles.categoryContainer}>
+      {/* Search Input */}
+      <View style={styles.searchBox}>
+        <Search size={16} color={colors.inkFaint} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search partner discounts or stores..."
+          placeholderTextColor={colors.inkFaint}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {/* Categories */}
+      <View style={styles.categoryRow}>
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -123,29 +154,47 @@ export const NearbyFeedScreen = ({ navigation }) => {
               label={item}
               active={selectedCategory === item}
               accentColor={colors.sky}
-              accentSoft={colors.skySoft}
+              accentSoftColor={colors.skySoft}
               onPress={() => setSelectedCategory(item)}
             />
           )}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          contentContainerStyle={styles.categoryList}
         />
       </View>
 
       {/* Deals List */}
-      <FlatList
-        data={deals}
-        keyExtractor={(item) => item.id}
-        renderItem={renderDealCard}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.sky}
-            colors={[colors.sky]}
-          />
-        }
-      />
+      {loading && !refreshing ? (
+        <SkeletonLoader count={3} />
+      ) : error ? (
+        <ErrorState
+          title="Could not load local perks"
+          message={error}
+          onRetry={() => fetchDeals()}
+        />
+      ) : (
+        <FlatList
+          data={deals}
+          keyExtractor={(item) => item.id}
+          renderItem={renderDealCard}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.sky}
+              colors={[colors.sky]}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon={<Compass size={32} color={colors.sky} />}
+              title="No perks found"
+              description="Check back soon for new partner discounts around campus!"
+              accentVariant="sky"
+            />
+          }
+        />
+      )}
     </View>
   );
 };
@@ -155,38 +204,63 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.canvas
   },
-  categoryContainer: {
-    paddingVertical: 12
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.borderInk,
+    marginHorizontal: spacing.containerPadding,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.md,
+    height: 44,
+    ...shadows.hardSm
+  },
+  searchIcon: {
+    marginRight: spacing.sm
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: "500"
+  },
+  categoryRow: {
+    paddingVertical: spacing.md
+  },
+  categoryList: {
+    paddingHorizontal: spacing.containerPadding
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100
+    paddingHorizontal: spacing.containerPadding,
+    paddingBottom: 90
   },
   card: {
-    marginBottom: 14
+    marginBottom: spacing.md
   },
   cardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8
+    marginBottom: spacing.sm
   },
   discountBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: colors.sky,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
+    borderColor: colors.borderInk,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: radii.full,
+    borderRadius: radii.pill,
     ...shadows.hardSm
   },
   discountText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-    fontSize: 11
+    ...typography.badge,
+    color: colors.sky,
+    fontSize: 12
   },
   distanceBadge: {
     flexDirection: "row",
@@ -195,69 +269,66 @@ const styles = StyleSheet.create({
   },
   distanceText: {
     ...typography.bodySm,
-    color: colors.sky,
-    fontWeight: "800",
     fontSize: 11
   },
   storeName: {
-    ...typography.h3,
+    ...typography.heading,
     fontSize: 17,
     marginBottom: 4
   },
   description: {
     ...typography.body,
-    lineHeight: 20,
-    marginBottom: 12
+    marginBottom: spacing.md
   },
-  couponBox: {
+  couponCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.surfaceInset,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    borderStyle: "dashed",
-    borderRadius: radii.md,
-    padding: 12,
-    marginBottom: 8
+    padding: spacing.md,
+    marginBottom: spacing.sm
   },
   couponLabel: {
-    fontSize: 9,
-    fontWeight: "800",
+    ...typography.caption,
+    fontSize: 9.5,
     color: colors.inkFaint,
-    letterSpacing: 0.5,
     marginBottom: 2
   },
   couponCode: {
-    ...typography.label,
-    fontSize: 15,
+    ...typography.mono,
+    fontSize: 14,
     color: colors.ink,
     letterSpacing: 1
   },
   copyBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 4,
     backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
+    borderColor: colors.borderInk,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: radii.full,
+    borderRadius: radii.sm,
     ...shadows.hardSm
   },
   copyBtnSuccess: {
     backgroundColor: colors.mint
   },
   copyText: {
-    ...typography.bodySm,
+    ...typography.badge,
     color: colors.ink,
-    fontWeight: "800",
-    fontSize: 11
+    fontSize: 12
+  },
+  copyTextSuccess: {
+    ...typography.badge,
+    color: colors.surface,
+    fontSize: 12
+  },
+  cardFooter: {
+    marginTop: 2
   },
   validText: {
     ...typography.bodySm,
-    color: colors.inkFaint,
     fontSize: 11
   }
 });

@@ -14,15 +14,20 @@ import {
   Search,
   Plus,
   Shield,
-  Sparkles
+  Sparkles,
+  TrendingUp
 } from "lucide-react-native";
 import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { connectService } from "../../services/connectService";
 import { socketService } from "../../services/socketService";
-import { PopHeader } from "../../components/common/PopHeader";
+import { HeaderBar } from "../../components/common/HeaderBar";
 import { PopCard } from "../../components/common/PopCard";
 import { PopPill } from "../../components/common/PopPill";
+import { PopButton } from "../../components/common/PopButton";
 import { PopAvatar } from "../../components/common/PopAvatar";
+import { SkeletonLoader } from "../../components/common/SkeletonLoader";
+import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
 import { CreatePostModal } from "./CreatePostModal";
 
 const CATEGORIES = ["All", "Academic", "General", "Lost & Found"];
@@ -33,15 +38,17 @@ export const ConnectFeedScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   const fetchPosts = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
       const data = await connectService.getPosts(selectedCategory, searchQuery);
       setPosts(data || []);
     } catch (err) {
-      console.warn("Failed to load discussions:", err.message);
+      setError(err.message || "Failed to load discussions.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,17 +86,23 @@ export const ConnectFeedScreen = ({ navigation }) => {
 
   const handleUpvote = async (postId) => {
     const originalPosts = [...posts];
-    setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, upvotes: (p.upvotes || 0) + 1 } : p))
+
+    setPosts((prevPosts) =>
+      prevPosts.map((p) =>
+        p.id === postId ? { ...p, upvotes: (p.upvotes || 0) + 1 } : p
+      )
     );
 
     try {
-      const res = await connectService.upvotePost(postId);
-      setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, upvotes: res.upvotes } : p))
+      const result = await connectService.upvotePost(postId);
+      setPosts((prevPosts) =>
+        prevPosts.map((p) =>
+          p.id === postId ? { ...p, upvotes: result.upvotes } : p
+        )
       );
     } catch (err) {
       setPosts(originalPosts);
+      console.warn("[Connect] Upvote failed, rolled back:", err.message);
     }
   };
 
@@ -100,26 +113,26 @@ export const ConnectFeedScreen = ({ navigation }) => {
 
     return (
       <TouchableOpacity
-        activeOpacity={0.85}
+        activeOpacity={0.9}
         onPress={() => navigation.navigate("PostDetail", { post: item })}
       >
         <PopCard style={styles.postCard}>
           {/* Card Header */}
           <View style={styles.cardHeader}>
             <View style={styles.authorRow}>
-              <PopAvatar name={authorName} anonymous={isAnonymous} size={36} accentColor={colors.violet} />
+              <PopAvatar name={authorName} anonymous={isAnonymous} size={36} />
               <View style={styles.authorMeta}>
                 <Text style={styles.authorName}>{authorName}</Text>
                 <Text style={styles.postTime}>{item.createdAt || "Recently"}</Text>
               </View>
             </View>
 
-            <View style={styles.tagBadge}>
-              <Text style={styles.tagText}>{item.category || "General"}</Text>
+            <View style={[styles.categoryBadge, { backgroundColor: colors.violetSoft }]}>
+              <Text style={styles.categoryBadgeText}>{item.category || "General"}</Text>
             </View>
           </View>
 
-          {/* Title & Content */}
+          {/* Title & Body */}
           <Text style={styles.postTitle}>{item.title}</Text>
           <Text style={styles.postContent} numberOfLines={3}>
             {item.content}
@@ -133,12 +146,12 @@ export const ConnectFeedScreen = ({ navigation }) => {
               activeOpacity={0.7}
             >
               <ThumbsUp size={14} color={colors.violet} />
-              <Text style={styles.upvoteText}>{item.upvotes || 0}</Text>
+              <Text style={styles.upvoteCount}>{item.upvotes || 0}</Text>
             </TouchableOpacity>
 
-            <View style={styles.commentCountRow}>
-              <MessageSquare size={14} color={colors.inkFaint} />
-              <Text style={styles.commentCountText}>{commentsCount} replies</Text>
+            <View style={styles.repliesBtn}>
+              <MessageSquare size={14} color={colors.inkSoft} />
+              <Text style={styles.repliesText}>{commentsCount} replies</Text>
             </View>
           </View>
         </PopCard>
@@ -148,28 +161,27 @@ export const ConnectFeedScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <PopHeader
+      <HeaderBar
         title="CampusConnect"
-        subtitle="Verified Community Feed"
-        onProfilePress={() => navigation.navigate("Profile")}
+        subtitle="Verified Student Community Feed"
+        accentColor={colors.violet}
+        onNotificationPress={() => {}}
       />
 
       {/* Search Input */}
-      <View style={styles.searchRow}>
-        <View style={styles.searchInputWrapper}>
-          <Search size={16} color={colors.inkFaint} style={{ marginRight: 8 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search discussions or questions..."
-            placeholderTextColor={colors.inkFaint}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+      <View style={styles.searchBox}>
+        <Search size={16} color={colors.inkFaint} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search discussions or questions..."
+          placeholderTextColor={colors.inkFaint}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
       </View>
 
       {/* Category Pills */}
-      <View style={styles.categoryContainer}>
+      <View style={styles.categoryRow}>
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -180,37 +192,61 @@ export const ConnectFeedScreen = ({ navigation }) => {
               label={item}
               active={selectedCategory === item}
               accentColor={colors.violet}
-              accentSoft={colors.violetSoft}
+              accentSoftColor={colors.violetSoft}
               onPress={() => setSelectedCategory(item)}
             />
           )}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          contentContainerStyle={styles.categoryList}
         />
       </View>
 
-      {/* Feed List */}
-      <FlatList
-        data={posts}
-        keyExtractor={(item) => item.id}
-        renderItem={renderPostCard}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.violet}
-            colors={[colors.violet]}
-          />
-        }
-      />
+      {/* Feed Content */}
+      {loading && !refreshing ? (
+        <SkeletonLoader count={3} />
+      ) : error ? (
+        <ErrorState
+          title="Could not load discussions"
+          message={error}
+          onRetry={() => fetchPosts()}
+        />
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item.id}
+          renderItem={renderPostCard}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.violet}
+              colors={[colors.violet]}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon={<MessageSquare size={32} color={colors.violet} />}
+              title="No discussions found"
+              description={
+                searchQuery
+                  ? `No posts matched "${searchQuery}". Try a different keyword or category.`
+                  : "Be the first student to post a question or announcement!"
+              }
+              actionTitle="Create Discussion"
+              onAction={() => setModalVisible(true)}
+              accentVariant="violet"
+            />
+          }
+        />
+      )}
 
-      {/* FAB (Violet Pop) */}
+      {/* Floating Action Button */}
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.85}
         onPress={() => setModalVisible(true)}
       >
-        <Plus size={26} color="#FFFFFF" strokeWidth={2.5} />
+        <Plus size={24} color={colors.surface} />
       </TouchableOpacity>
 
       <CreatePostModal
@@ -234,92 +270,92 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.canvas
   },
-  searchRow: {
-    paddingHorizontal: 16,
-    paddingTop: 12
-  },
-  searchInputWrapper: {
+  searchBox: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.surface,
     borderRadius: radii.md,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 12,
+    borderColor: colors.borderInk,
+    marginHorizontal: spacing.containerPadding,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.md,
     height: 44,
     ...shadows.hardSm
+  },
+  searchIcon: {
+    marginRight: spacing.sm
   },
   searchInput: {
     flex: 1,
     color: colors.ink,
     fontSize: 14,
-    fontWeight: "600"
+    fontWeight: "500"
   },
-  categoryContainer: {
-    paddingVertical: 12
+  categoryRow: {
+    paddingVertical: spacing.md
+  },
+  categoryList: {
+    paddingHorizontal: spacing.containerPadding
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100
+    paddingHorizontal: spacing.containerPadding,
+    paddingBottom: 90
   },
   postCard: {
-    marginBottom: 14
+    marginBottom: spacing.md
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10
+    marginBottom: spacing.sm
   },
   authorRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 10
+    alignItems: "center"
   },
   authorMeta: {
-    justifyContent: "center"
+    marginLeft: spacing.sm
   },
   authorName: {
-    ...typography.label,
-    fontSize: 14,
+    ...typography.badge,
+    fontSize: 13,
     color: colors.ink
   },
   postTime: {
     ...typography.bodySm,
-    color: colors.inkFaint,
     fontSize: 11
   },
-  tagBadge: {
-    backgroundColor: colors.violetSoft,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 10,
+  categoryBadge: {
+    paddingHorizontal: 9,
     paddingVertical: 3,
-    borderRadius: radii.full
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderInk
   },
-  tagText: {
-    ...typography.bodySm,
-    color: colors.violet,
-    fontWeight: "800",
-    fontSize: 11
+  categoryBadgeText: {
+    ...typography.badge,
+    fontSize: 11,
+    color: colors.violet
   },
   postTitle: {
-    ...typography.h3,
-    fontSize: 17,
+    ...typography.heading,
+    fontSize: 16,
     marginBottom: 4
   },
   postContent: {
     ...typography.body,
-    lineHeight: 20,
-    marginBottom: 12
+    marginBottom: spacing.md
   },
   cardFooter: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: spacing.lg,
     borderTopWidth: 1.5,
     borderTopColor: colors.line,
-    paddingTop: 10
+    paddingTop: spacing.sm
   },
   upvoteBtn: {
     flexDirection: "row",
@@ -327,39 +363,39 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: colors.violetSoft,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
+    borderColor: colors.borderInk,
     paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: radii.full,
+    borderRadius: radii.pill,
     ...shadows.hardSm
   },
-  upvoteText: {
-    ...typography.bodySm,
+  upvoteCount: {
+    ...typography.badge,
     color: colors.violet,
-    fontWeight: "800"
+    fontSize: 12
   },
-  commentCountRow: {
+  repliesBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6
+    gap: 5
   },
-  commentCountText: {
+  repliesText: {
     ...typography.bodySm,
-    color: colors.inkFaint
+    color: colors.inkSoft,
+    fontWeight: "600"
   },
   fab: {
     position: "absolute",
-    bottom: 24,
-    right: 20,
+    bottom: 22,
+    right: 18,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: radii.md,
     backgroundColor: colors.violet,
+    borderWidth: 2,
+    borderColor: colors.borderInk,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.lineStrong,
-    ...shadows.hard,
-    elevation: 6
+    ...shadows.hard
   }
 });

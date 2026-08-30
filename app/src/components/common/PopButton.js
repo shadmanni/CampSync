@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from "react-native";
-import { colors, radii, shadows, typography } from "../../theme/theme";
+import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 
 export const PopButton = ({
   title,
   onPress,
   loading = false,
   disabled = false,
-  variant = "violet", // "violet" | "coral" | "mint" | "sky" | "sun" | "rose" | "ink" | "surface" | "ghost"
-  size = "md", // "sm" | "md" | "lg"
+  variant = "violet", // 'violet' | 'coral' | 'mint' | 'sky' | 'sun' | 'rose' | 'ink' | 'surface' | 'ghost'
+  size = "md", // 'sm' | 'md' | 'lg'
   icon,
   style,
   textStyle
@@ -31,17 +31,16 @@ export const PopButton = ({
   };
 
   const getTextColor = () => {
-    if (variant === "surface") return colors.ink;
-    if (variant === "ghost") return colors.ink;
-    if (variant === "sun") return colors.ink;
-    return "#FFFFFF";
+    if (variant === "surface" || variant === "ghost") return colors.ink;
+    if (variant === "sun") return colors.ink; // Sun is yellow, needs dark text
+    return colors.surface; // White text for violet, coral, mint, sky, rose, ink
   };
 
   const isGhost = variant === "ghost";
 
   return (
     <TouchableOpacity
-      activeOpacity={0.9}
+      activeOpacity={1}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       onPress={onPress}
@@ -49,10 +48,10 @@ export const PopButton = ({
       style={[
         styles.button,
         { backgroundColor: getBgColor() },
-        isGhost && styles.buttonGhost,
+        isGhost ? styles.buttonGhost : styles.buttonPop,
         size === "sm" && styles.buttonSm,
         size === "lg" && styles.buttonLg,
-        !isGhost && (pressed ? styles.buttonPressed : shadows.hardSm),
+        pressed && !isGhost && styles.buttonPressed,
         disabled && styles.buttonDisabled,
         style
       ]}
@@ -61,18 +60,20 @@ export const PopButton = ({
         <ActivityIndicator color={getTextColor()} size="small" />
       ) : (
         <View style={styles.content}>
-          {icon && <View style={styles.iconContainer}>{icon}</View>}
-          <Text
-            style={[
-              styles.text,
-              { color: getTextColor() },
-              size === "sm" && { fontSize: 13 },
-              size === "lg" && { fontSize: 16 },
-              textStyle
-            ]}
-          >
-            {title}
-          </Text>
+          {icon && <View style={styles.iconWrapper}>{icon}</View>}
+          {title ? (
+            <Text
+              style={[
+                styles.text,
+                { color: getTextColor() },
+                size === "sm" && styles.textSm,
+                size === "lg" && styles.textLg,
+                textStyle
+              ]}
+            >
+              {title}
+            </Text>
+          ) : null}
         </View>
       )}
     </TouchableOpacity>
@@ -81,35 +82,39 @@ export const PopButton = ({
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: radii.full,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingVertical: 13,
-    paddingHorizontal: 20,
+    borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row"
+    paddingVertical: 12,
+    paddingHorizontal: spacing.lg
   },
-  buttonSm: {
-    paddingVertical: 8,
-    paddingHorizontal: 14
-  },
-  buttonLg: {
-    paddingVertical: 16,
-    paddingHorizontal: 26
-  },
-  buttonPressed: {
-    transform: [{ translateX: 2 }, { translateY: 2 }],
-    shadowOpacity: 0,
-    elevation: 0
+  buttonPop: {
+    borderWidth: 1.5,
+    borderColor: colors.borderInk,
+    ...shadows.hardSm
   },
   buttonGhost: {
     borderWidth: 0,
     shadowOpacity: 0,
     elevation: 0
   },
+  buttonSm: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: radii.sm
+  },
+  buttonLg: {
+    paddingVertical: 15,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radii.lg
+  },
+  buttonPressed: {
+    transform: [{ translateX: 2 }, { translateY: 2 }],
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0
+  },
   buttonDisabled: {
-    opacity: 0.45,
+    opacity: 0.5,
     shadowOpacity: 0,
     elevation: 0
   },
@@ -118,12 +123,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
-  iconContainer: {
+  iconWrapper: {
     marginRight: 6
   },
   text: {
-    ...typography.label,
-    fontSize: 14,
-    fontWeight: "800"
+    ...typography.badge,
+    fontSize: 14
+  },
+  textSm: {
+    fontSize: 12
+  },
+  textLg: {
+    fontSize: 16
   }
 });

@@ -1,7 +1,6 @@
 import api from "./api";
 
 export const tasksService = {
-  // 1. Fetch campus tasks / gigs with filters
   async getTasks(status = "ALL", category = "All") {
     const params = {};
     if (status && status !== "ALL") params.status = status;
@@ -9,18 +8,15 @@ export const tasksService = {
     return await api.get("/tasks", { params });
   },
 
-  // 2. Create new task gig
-  async createTask(data) {
-    return await api.post("/tasks", data);
+  async createTask(taskData) {
+    return await api.post("/tasks", taskData);
   },
 
-  // 3. Claim / Accept gig atomically
-  async claimTask(id) {
-    return await api.post(`/tasks/${id}/accept`);
+  async claimTask(taskId) {
+    return await api.post(`/tasks/${taskId}/claim`);
   },
 
-  // 4. Complete task
-  async completeTask(id) {
-    return await api.post(`/tasks/${id}/complete`);
+  async completeTask(taskId) {
+    return await api.post(`/tasks/${taskId}/complete`);
   }
 };

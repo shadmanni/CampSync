@@ -1,18 +1,18 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { ShieldCheck, Bell, Sparkles } from "lucide-react-native";
-import { colors, spacing, typography, radii } from "../../theme/theme";
+import { colors, radii, spacing, typography, shadows } from "../../theme/theme";
 import { useAuth } from "../../context/AuthContext";
 
-export const HeaderBar = ({ title, subtitle, onNotificationPress }) => {
+export const HeaderBar = ({ title, subtitle, accentColor = colors.violet, onNotificationPress }) => {
   const { user } = useAuth();
 
   return (
     <View style={styles.header}>
       <View style={styles.left}>
         <View style={styles.logoRow}>
-          <View style={styles.logoBadge}>
-            <Sparkles size={16} color={colors.textInverse} />
+          <View style={[styles.logoBadge, { backgroundColor: accentColor }]}>
+            <Text style={styles.logoText}>CS</Text>
           </View>
           <Text style={styles.brandTitle}>{title || "CampusSync"}</Text>
         </View>
@@ -20,9 +20,9 @@ export const HeaderBar = ({ title, subtitle, onNotificationPress }) => {
           <Text style={styles.subtitle}>{subtitle}</Text>
         ) : (
           <View style={styles.verifiedRow}>
-            <ShieldCheck size={13} color={colors.accentEmerald} />
+            <ShieldCheck size={13} color={colors.mint} />
             <Text style={styles.verifiedText}>
-              {user?.department || "Verified Campus Network"}
+              {user?.department || "Verified Student Network"}
             </Text>
           </View>
         )}
@@ -34,8 +34,8 @@ export const HeaderBar = ({ title, subtitle, onNotificationPress }) => {
           activeOpacity={0.7}
           onPress={onNotificationPress}
         >
-          <Bell size={18} color={colors.primary} />
-          <View style={styles.notificationDot} />
+          <Bell size={18} color={colors.ink} />
+          <View style={[styles.notificationDot, { backgroundColor: accentColor }]} />
         </TouchableOpacity>
       </View>
     </View>
@@ -49,14 +49,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: spacing.containerPadding,
     paddingVertical: spacing.md,
-    backgroundColor: colors.bgSurface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderGlass,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.borderInk
   },
   left: {
     flex: 1
@@ -68,35 +63,37 @@ const styles = StyleSheet.create({
   logoBadge: {
     width: 32,
     height: 32,
-    borderRadius: radii.md,
-    backgroundColor: colors.primary, // Deep Indigo
+    borderRadius: radii.sm,
+    borderWidth: 1.5,
+    borderColor: colors.borderInk,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.sm,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 3
+    ...shadows.hardSm
+  },
+  logoText: {
+    color: colors.surface,
+    fontWeight: "900",
+    fontSize: 14,
+    letterSpacing: -0.5
   },
   brandTitle: {
-    ...typography.h2,
-    fontSize: 21,
-    color: colors.primary
+    ...typography.title,
+    fontSize: 20
   },
   subtitle: {
     ...typography.bodySm,
-    color: colors.textMuted,
+    color: colors.inkSoft,
     marginTop: 2
   },
   verifiedRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 3
+    marginTop: 2
   },
   verifiedText: {
     ...typography.bodySm,
-    color: colors.accentEmerald,
+    color: colors.mint,
     marginLeft: 4,
     fontSize: 11,
     fontWeight: "700"
@@ -106,20 +103,24 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.bgDim,
+    width: 38,
+    height: 38,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface2,
+    borderWidth: 1.5,
+    borderColor: colors.borderInk,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    ...shadows.hardSm
   },
   notificationDot: {
     position: "absolute",
-    top: 8,
-    right: 9,
+    top: 6,
+    right: 6,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.secondary // Warm Orange #FF6F3C
+    borderWidth: 1,
+    borderColor: colors.surface
   }
 });

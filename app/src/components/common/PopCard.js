@@ -1,14 +1,18 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import { colors, radii, shadows } from "../../theme/theme";
+import { colors, radii, shadows, spacing } from "../../theme/theme";
 
 export const PopCard = ({ children, style, variant = "default", accentColor }) => {
+  const isInset = variant === "inset";
+  const isFlat = variant === "flat";
+
   return (
     <View
       style={[
         styles.card,
-        variant === "inset" && styles.cardInset,
-        accentColor && { borderColor: colors.lineStrong },
+        isInset && styles.cardInset,
+        isFlat && styles.cardFlat,
+        accentColor && { borderColor: colors.ink },
         style
       ]}
     >
@@ -22,14 +26,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    ...shadows.hard,
-    padding: 16
+    borderColor: colors.borderInk,
+    padding: spacing.md,
+    ...shadows.hard
   },
   cardInset: {
     backgroundColor: colors.surfaceInset,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.line,
+    shadowOpacity: 0,
+    elevation: 0
+  },
+  cardFlat: {
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.borderInk,
     shadowOpacity: 0,
     elevation: 0
   }

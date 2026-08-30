@@ -1,17 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, useMotionValueEvent, useScroll } from 'framer-motion';
-import { ShieldCheck, LogOut, LogIn, Radio } from 'lucide-react';
+import { Sun, Moon, ShieldCheck, LogOut, LogIn, Radio } from 'lucide-react';
 import { MODULES } from '../lib/modules.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { useSocketStatus } from '../lib/socket.js';
 import { spring } from '../lib/motion.js';
 import { Avatar, MagneticButton } from './ui.jsx';
 
 /**
  * Sticky top bar.
+ *
+ * Two scroll-linked behaviours:
+ *  - it condenses once you leave the hero (less chrome, more content), and
+ *  - the active-tab indicator is a single shared element that slides between
+ *    pills via `layoutId`, rather than four independently fading backgrounds.
  */
 export function Navbar({ active, onNavigate, onBrandClick }) {
   const { user, logout, openAuth } = useAuth();
+  const { isDark, toggle } = useTheme();
   const { scrollY } = useScroll();
   const [condensed, setCondensed] = useState(false);
   const [socketUp, setSocketUp] = useState(false);
@@ -19,6 +26,8 @@ export function Navbar({ active, onNavigate, onBrandClick }) {
   useSocketStatus(setSocketUp);
 
   useMotionValueEvent(scrollY, 'change', (y) => {
+    // Hysteresis: different thresholds up and down so the bar cannot flicker
+    // when the user hovers right at the boundary.
     setCondensed((prev) => (prev ? y > 40 : y > 90));
   });
 
@@ -112,30 +121,62 @@ export function Navbar({ active, onNavigate, onBrandClick }) {
         </button>
 
         {/* ---- Module tabs (desktop) ---- */}
-        <nav className="nav-pills hide-sm" aria-label="Campus modules">
+        <nav
+          className="hide-sm"
+          aria-label="Modules"
+          style={{
+            display: 'flex',
+            gap: 2,
+            padding: 4,
+            borderRadius: 'var(--r-pill)',
+            border: 'var(--line-width) solid var(--line)',
+            background: 'var(--surface-2)',
+          }}
+        >
           {MODULES.map((m) => {
-            const isCurrent = active === m.id;
             const Icon = m.icon;
+            const isActive = active === m.id;
             return (
               <button
                 key={m.id}
                 type="button"
-                className={`nav-pill ${isCurrent ? 'nav-pill-active' : ''}`}
                 onClick={() => onNavigate(m.id)}
-                style={{ '--accent': `var(${m.accentToken})` }}
+                aria-current={isActive ? 'page' : undefined}
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '8px 15px',
+                  borderRadius: 'var(--r-pill)',
+                  border: 0,
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontSize: 'var(--t-small)',
+                  fontWeight: 700,
+                  color: isActive ? m.color : 'var(--ink-soft)',
+                  transition: 'color 220ms var(--ease-out)',
+                  whiteSpace: 'nowrap',
+                }}
               >
-                {/* Sliding indicator */}
-                {isCurrent && (
+                {isActive && (
                   <motion.span
-                    layoutId="nav-active-bubble"
-                    className="nav-active-bubble"
-                    transition={spring.bouncy}
+                    // One indicator, shared across every tab: it physically
+                    // travels rather than cross-fading.
+                    layoutId="nav-indicator"
+                    transition={spring.layout}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: 'var(--r-pill)',
+                      background: `color-mix(in srgb, ${m.color} 14%, transparent)`,
+                      border: `1.5px solid color-mix(in srgb, ${m.color} 34%, transparent)`,
+                    }}
                   />
                 )}
-                <span className="row" style={{ gap: 8, position: 'relative', zIndex: 1 }}>
-                  <Icon size={16} strokeWidth={isCurrent ? 2.4 : 2} />
-                  <span>{m.label}</span>
-                  {m.badge && <span className="nav-pill-badge">{m.badge}</span>}
+                <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Icon size={15} strokeWidth={2.4} />
+                  {m.label}
                 </span>
               </button>
             );
@@ -154,6 +195,8 @@ export function Navbar({ active, onNavigate, onBrandClick }) {
               Live
             </span>
           )}
+
+          <ThemeToggle isDark={isDark} onToggle={toggle} />
 
           {user ? (
             <div className="row" style={{ gap: 8 }}>
@@ -184,6 +227,33 @@ export function Navbar({ active, onNavigate, onBrandClick }) {
         </div>
       </div>
     </motion.header>
+  );
+}
+
+/** Sun/moon toggle where the icon rotates and scales through the swap. */
+function ThemeToggle({ isDark, onToggle }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="btn btn-ghost btn-icon"
+      aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+      title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+      style={{ overflow: 'hidden', position: 'relative' }}
+    >
+      <motion.span
+        key={isDark ? 'moon' : 'sun'}
+        initial={mounted ? { rotate: -110, scale: 0.4, opacity: 0 } : false}
+        animate={{ rotate: 0, scale: 1, opacity: 1 }}
+        transition={spring.bouncy}
+        style={{ display: 'grid', placeItems: 'center' }}
+      >
+        {isDark ? <Moon size={16} strokeWidth={2.4} /> : <Sun size={16} strokeWidth={2.4} />}
+      </motion.span>
+    </button>
   );
 }
 
@@ -226,6 +296,7 @@ export function MobileTabBar({ active, onNavigate }) {
               flexDirection: 'column',
               alignItems: 'center',
               gap: 3,
+              // 48px minimum tap target, per the design doc's mobile rules.
               minHeight: 48,
               justifyContent: 'center',
               padding: '6px 2px',

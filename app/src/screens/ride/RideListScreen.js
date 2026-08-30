@@ -6,56 +6,65 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  TextInput,
   Alert
 } from "react-native";
 import {
   Car,
   MapPin,
-  Calendar,
   Clock,
   Users,
   ShieldCheck,
-  CheckCircle2,
+  Plus,
+  Calendar,
   Sparkles
 } from "lucide-react-native";
 import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { rideService } from "../../services/rideService";
 import { socketService } from "../../services/socketService";
-import { PopHeader } from "../../components/common/PopHeader";
+import { useAuth } from "../../context/AuthContext";
+import { HeaderBar } from "../../components/common/HeaderBar";
 import { PopCard } from "../../components/common/PopCard";
 import { PopPill } from "../../components/common/PopPill";
 import { PopButton } from "../../components/common/PopButton";
 import { PopAvatar } from "../../components/common/PopAvatar";
 import { SeatPips } from "../../components/common/SeatPips";
+import { SkeletonLoader } from "../../components/common/SkeletonLoader";
+import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
+import { CreateRideModal } from "./CreateRideModal";
 
-const TABS = ["All Rides", "Events"];
+const RIDE_DESTINATIONS = ["All Rides", "Metro", "Airport", "City Center", "Events"];
 
-export const RideListScreen = ({ navigation }) => {
-  const [selectedTab, setSelectedTab] = useState("All Rides");
+export const RideListScreen = () => {
+  const { user } = useAuth();
+
+  const [activeTab, setActiveTab] = useState("All Rides");
   const [rides, setRides] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [bookingId, setBookingId] = useState(null);
+  const [error, setError] = useState(null);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
-      if (selectedTab === "All Rides") {
-        const data = await rideService.getRides();
-        setRides(data || []);
+      if (activeTab === "Events") {
+        const eventsData = await rideService.getEvents();
+        setEvents(eventsData || []);
       } else {
-        const data = await rideService.getEvents();
-        setEvents(data || []);
+        const destinationParam = activeTab === "All Rides" ? "" : activeTab;
+        const ridesData = await rideService.getRides(destinationParam);
+        setRides(ridesData || []);
       }
     } catch (err) {
-      console.warn("Failed to load rides/events:", err.message);
+      setError(err.message || "Failed to load rides.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedTab]);
+  }, [activeTab]);
 
   useEffect(() => {
     loadData();
@@ -63,9 +72,13 @@ export const RideListScreen = ({ navigation }) => {
 
   // Real-time seat updates
   useEffect(() => {
-    const handleSeatUpdate = (payload) => {
+    const handleSeatUpdate = (update) => {
       setRides((prev) =>
-        prev.map((r) => (r.id === payload.rideId ? { ...r, availableSeats: payload.availableSeats } : r))
+        prev.map((r) =>
+          r.id === update.rideId
+            ? { ...r, availableSeats: update.availableSeats }
+            : r
+        )
       );
     };
 
@@ -80,90 +93,94 @@ export const RideListScreen = ({ navigation }) => {
     loadData(true);
   };
 
-  const handleBookRide = async (rideId) => {
-    setBookingId(rideId);
+  const handleBookSeat = async (ride) => {
+    if (ride.availableSeats <= 0) {
+      Alert.alert("Fully Booked", "This ride has no seats remaining.");
+      return;
+    }
+
     try {
-      const res = await rideService.bookRide(rideId, 1);
+      await rideService.bookSeat(ride.id, 1, user?.name || "Verified Student");
+      // Optimistically update
       setRides((prev) =>
-        prev.map((r) => (r.id === rideId ? { ...r, availableSeats: res.ride.availableSeats } : r))
+        prev.map((r) => (r.id === ride.id ? { ...r, availableSeats: r.availableSeats - 1 } : r))
       );
-      Alert.alert("Seat Reserved! 🚗", "Your carpool seat has been successfully booked.");
+      Alert.alert("Seat Reserved!", `You've joined ${ride.driverName}'s ride to ${ride.destination}.`);
     } catch (err) {
-      Alert.alert("Booking Notice", err.message || "Failed to book seat.");
-    } finally {
-      setBookingId(null);
+      Alert.alert("Booking Failed", err.message || "Could not reserve seat.");
     }
   };
 
-  const handleRsvpEvent = async (eventId) => {
+  const handleRsvpEvent = async (event) => {
     try {
-      const res = await rideService.rsvpEvent(eventId);
+      await rideService.rsvpEvent(event.id);
       setEvents((prev) =>
-        prev.map((e) => (e.id === eventId ? { ...e, attendeesCount: res.event.attendeesCount } : e))
+        prev.map((ev) =>
+          ev.id === event.id ? { ...ev, attendeesCount: (ev.attendeesCount || 0) + 1, isRsvpd: true } : ev
+        )
       );
-      Alert.alert("RSVP Confirmed! 🎉", "You are marked as attending this campus event.");
+      Alert.alert("RSVP Confirmed!", `You're marked as going to ${event.title}!`);
     } catch (err) {
-      Alert.alert("RSVP Notice", err.message || "Failed to RSVP.");
+      Alert.alert("RSVP Failed", err.message || "Could not confirm RSVP.");
     }
   };
 
   const renderRideCard = ({ item }) => {
     const isFull = item.availableSeats <= 0;
-    const isBooking = bookingId === item.id;
 
     return (
       <PopCard style={styles.card}>
-        {/* Driver Row */}
-        <View style={styles.driverRow}>
-          <PopAvatar name={item.driverName || "Driver"} size={38} accentColor={colors.mint} />
-          <View style={styles.driverMeta}>
-            <Text style={styles.driverName}>{item.driverName || "Verified Driver"}</Text>
-            <View style={styles.verifiedTag}>
-              <ShieldCheck size={12} color={colors.mint} />
-              <Text style={styles.verifiedText}>{item.vehicle || "College Student"}</Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.driverRow}>
+            <PopAvatar name={item.driverName || "Driver"} size={36} />
+            <View style={styles.driverMeta}>
+              <Text style={styles.driverName}>{item.driverName || "Verified Student"}</Text>
+              <Text style={styles.driverDept}>{item.department || "Hostel Resident"}</Text>
             </View>
           </View>
-          <View style={styles.fareBlock}>
-            <Text style={styles.fareValue}>₹{item.farePerSeat || item.price || 50}</Text>
-            <Text style={styles.fareSub}>/ seat</Text>
+
+          <View style={styles.fareContainer}>
+            <Text style={styles.farePrice}>₹{item.farePerSeat || 0}</Text>
+            <Text style={styles.fareLabel}>/ seat</Text>
           </View>
         </View>
 
         {/* Route Details */}
-        <View style={styles.routeContainer}>
+        <PopCard style={styles.routeBox} variant="inset">
           <View style={styles.timeline}>
-            <View style={styles.dotOrigin} />
-            <View style={styles.timelineLine} />
-            <View style={styles.dotDest} />
+            <View style={[styles.dot, { backgroundColor: colors.mint }]} />
+            <View style={styles.line} />
+            <View style={[styles.dot, { backgroundColor: colors.coral }]} />
           </View>
-          <View style={styles.routeNames}>
+          <View style={styles.routeTextCol}>
             <Text style={styles.originText}>{item.origin}</Text>
-            <Text style={styles.destText}>{item.destination}</Text>
+            <Text style={styles.destinationText}>{item.destination}</Text>
           </View>
-        </View>
+        </PopCard>
 
-        {/* Timing & Seats */}
+        {/* Meta details & Seat Pips */}
         <View style={styles.metaRow}>
-          <View style={styles.timingPill}>
-            <Clock size={13} color={colors.inkFaint} />
-            <Text style={styles.timingText}>{item.departureTime || "Today, 6:00 PM"}</Text>
+          <View style={styles.timeBadge}>
+            <Clock size={13} color={colors.ink} />
+            <Text style={styles.timeText}>{item.departureTime}</Text>
           </View>
-          <View style={styles.seatsMeter}>
+
+          <View style={styles.seatPipsRow}>
             <SeatPips total={item.totalSeats || 4} available={item.availableSeats} accentColor={colors.mint} />
-            <Text style={styles.seatsText}>{item.availableSeats} seats left</Text>
+            <Text style={[styles.seatsCount, isFull && { color: colors.rose }]}>
+              {isFull ? "FULL" : `${item.availableSeats} left`}
+            </Text>
           </View>
         </View>
 
-        {/* Booking CTA */}
         <View style={styles.cardFooter}>
+          <Text style={styles.vehicleText}>{item.vehicle || "Verified Car"}</Text>
           <PopButton
-            title={isFull ? "Ride Full" : "Book 1 Seat"}
-            onPress={() => handleBookRide(item.id)}
+            title={isFull ? "Fully Booked" : "Join Ride"}
+            onPress={() => handleBookSeat(item)}
             disabled={isFull}
-            loading={isBooking}
             variant="mint"
             size="sm"
-            style={{ width: "100%" }}
           />
         </View>
       </PopCard>
@@ -173,37 +190,28 @@ export const RideListScreen = ({ navigation }) => {
   const renderEventCard = ({ item }) => {
     return (
       <PopCard style={styles.card}>
-        <View style={styles.cardTop}>
-          <View style={styles.eventCategoryTag}>
-            <Text style={styles.eventCategoryText}>{item.category || "Campus Event"}</Text>
-          </View>
-          <View style={styles.attendeesPill}>
-            <Users size={12} color={colors.mint} />
-            <Text style={styles.attendeesText}>{item.attendeesCount || 0} Attending</Text>
-          </View>
-        </View>
-
-        <Text style={styles.itemTitle}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
-
-        <View style={styles.eventMetaContainer}>
-          <View style={styles.eventMetaRow}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.eventTag, { backgroundColor: colors.mintSoft }]}>
             <Calendar size={13} color={colors.mint} />
-            <Text style={styles.eventMetaText}>{item.date || "Upcoming Weekend"}</Text>
+            <Text style={styles.eventTagText}>CAMPUS EVENT</Text>
           </View>
-          <View style={styles.eventMetaRow}>
-            <MapPin size={13} color={colors.mint} />
-            <Text style={styles.eventMetaText}>{item.venue || "Main Auditorium"}</Text>
-          </View>
+          <Text style={styles.timeText}>{item.time}</Text>
         </View>
+
+        <Text style={styles.eventTitle}>{item.title}</Text>
+        <Text style={styles.eventVenue}>📍 {item.venue}</Text>
+        <Text style={styles.eventDesc}>{item.description}</Text>
 
         <View style={styles.cardFooter}>
+          <Text style={styles.attendeesText}>
+            👥 <Text style={{ fontWeight: "800", color: colors.ink }}>{item.attendeesCount || 0}</Text> students going
+          </Text>
           <PopButton
-            title="I'm Going (RSVP)"
-            onPress={() => handleRsvpEvent(item.id)}
+            title={item.isRsvpd ? "Going ✓" : "I'm Going"}
+            onPress={() => handleRsvpEvent(item)}
+            disabled={item.isRsvpd}
             variant="mint"
             size="sm"
-            style={{ width: "100%" }}
           />
         </View>
       </PopCard>
@@ -212,41 +220,86 @@ export const RideListScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <PopHeader
+      <HeaderBar
         title="CampusRide"
-        subtitle="Peer Carpooling & Events"
+        subtitle="Peer Carpools & Campus Gatherings"
         accentColor={colors.mint}
-        onProfilePress={() => navigation.navigate("Profile")}
+        onNotificationPress={() => {}}
       />
 
-      {/* Tabs */}
-      <View style={styles.tabContainer}>
-        {TABS.map((tab) => (
-          <PopPill
-            key={tab}
-            label={tab}
-            active={selectedTab === tab}
-            accentColor={colors.mint}
-            accentSoft={colors.mintSoft}
-            onPress={() => setSelectedTab(tab)}
-          />
-        ))}
+      {/* Destination Tabs */}
+      <View style={styles.categoryRow}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={RIDE_DESTINATIONS}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => (
+            <PopPill
+              label={item}
+              active={activeTab === item}
+              accentColor={colors.mint}
+              accentSoftColor={colors.mintSoft}
+              onPress={() => setActiveTab(item)}
+            />
+          )}
+          contentContainerStyle={styles.categoryList}
+        />
       </View>
 
-      {/* List */}
-      <FlatList
-        data={selectedTab === "All Rides" ? rides : events}
-        keyExtractor={(item) => item.id}
-        renderItem={selectedTab === "All Rides" ? renderRideCard : renderEventCard}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.mint}
-            colors={[colors.mint]}
-          />
-        }
+      {/* Content Feed */}
+      {loading && !refreshing ? (
+        <SkeletonLoader count={3} />
+      ) : error ? (
+        <ErrorState
+          title="Could not load carpools"
+          message={error}
+          onRetry={() => loadData()}
+        />
+      ) : (
+        <FlatList
+          data={activeTab === "Events" ? events : rides}
+          keyExtractor={(item) => item.id}
+          renderItem={activeTab === "Events" ? renderEventCard : renderRideCard}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.mint}
+              colors={[colors.mint]}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon={<Car size={32} color={colors.mint} />}
+              title={activeTab === "Events" ? "No events scheduled" : "No carpools found"}
+              description="Be the first student to post a ride route or campus event!"
+              actionTitle={activeTab === "Events" ? "Create Event" : "Post a Ride"}
+              onAction={() => setCreateModalVisible(true)}
+              accentVariant="mint"
+            />
+          }
+        />
+      )}
+
+      {/* Floating Action Button */}
+      {activeTab !== "Events" && (
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.85}
+          onPress={() => setCreateModalVisible(true)}
+        >
+          <Plus size={24} color={colors.surface} />
+        </TouchableOpacity>
+      )}
+
+      <CreateRideModal
+        visible={createModalVisible}
+        onClose={() => setCreateModalVisible(false)}
+        onCreated={(newRide) => {
+          setRides((prev) => [newRide, ...prev]);
+        }}
       />
     </View>
   );
@@ -257,191 +310,176 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.canvas
   },
-  tabContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 12
+  categoryRow: {
+    paddingVertical: spacing.md
+  },
+  categoryList: {
+    paddingHorizontal: spacing.containerPadding
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100
+    paddingHorizontal: spacing.containerPadding,
+    paddingBottom: 90
   },
   card: {
-    marginBottom: 14
+    marginBottom: spacing.md
   },
-  cardTop: {
+  cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10
+    marginBottom: spacing.sm
   },
   driverRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12
+    alignItems: "center"
   },
   driverMeta: {
-    flex: 1,
-    marginLeft: 10
+    marginLeft: spacing.sm
   },
   driverName: {
-    ...typography.label,
-    fontSize: 14
-  },
-  verifiedTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 2
-  },
-  verifiedText: {
-    ...typography.bodySm,
-    color: colors.mint,
-    fontSize: 11,
-    fontWeight: "700"
-  },
-  fareBlock: {
-    alignItems: "flex-end"
-  },
-  fareValue: {
-    ...typography.h2,
-    fontSize: 19,
+    ...typography.badge,
+    fontSize: 13,
     color: colors.ink
   },
-  fareSub: {
+  driverDept: {
     ...typography.bodySm,
-    color: colors.inkFaint,
+    fontSize: 11
+  },
+  fareContainer: {
+    alignItems: "flex-end"
+  },
+  farePrice: {
+    ...typography.title,
+    fontSize: 19,
+    color: colors.mint
+  },
+  fareLabel: {
+    ...typography.caption,
     fontSize: 10
   },
-  routeContainer: {
+  routeBox: {
     flexDirection: "row",
-    backgroundColor: colors.surfaceInset,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    borderRadius: radii.md,
-    padding: 12,
-    marginBottom: 12
+    padding: spacing.md,
+    marginBottom: spacing.md
   },
   timeline: {
-    width: 16,
+    width: 14,
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 4,
-    marginRight: 8
+    paddingVertical: 2,
+    marginRight: spacing.sm
   },
-  dotOrigin: {
+  dot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.ink
+    borderRadius: 4
   },
-  timelineLine: {
+  line: {
     width: 1.5,
     flex: 1,
-    backgroundColor: colors.lineStrong,
+    backgroundColor: colors.line,
     marginVertical: 2
   },
-  dotDest: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.mint
-  },
-  routeNames: {
+  routeTextCol: {
     flex: 1,
     justifyContent: "space-between",
     gap: 8
   },
   originText: {
     ...typography.bodySm,
-    color: colors.inkSoft,
-    fontWeight: "600"
+    fontWeight: "600",
+    color: colors.ink
   },
-  destText: {
-    ...typography.bodySm,
-    color: colors.ink,
-    fontWeight: "800"
+  destinationText: {
+    ...typography.heading,
+    fontSize: 14.5,
+    color: colors.ink
   },
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12
+    marginBottom: spacing.sm
   },
-  timingPill: {
+  timeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5
+  },
+  timeText: {
+    ...typography.bodySm,
+    fontWeight: "600",
+    color: colors.ink
+  },
+  seatPipsRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6
   },
-  timingText: {
-    ...typography.bodySm,
-    color: colors.inkSoft,
-    fontWeight: "600"
-  },
-  seatsMeter: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6
-  },
-  seatsText: {
-    ...typography.bodySm,
-    color: colors.mint,
-    fontWeight: "800",
-    fontSize: 11
-  },
-  cardFooter: {
-    marginTop: 2
-  },
-  eventCategoryTag: {
-    backgroundColor: colors.mintSoft,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: radii.full
-  },
-  eventCategoryText: {
-    fontSize: 10,
-    fontWeight: "800",
+  seatsCount: {
+    ...typography.badge,
+    fontSize: 11,
     color: colors.mint
   },
-  attendeesPill: {
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 1.5,
+    borderTopColor: colors.line,
+    paddingTop: spacing.sm
+  },
+  vehicleText: {
+    ...typography.bodySm,
+    fontSize: 11.5,
+    color: colors.inkFaint
+  },
+  eventTag: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderInk
+  },
+  eventTagText: {
+    ...typography.badge,
+    fontSize: 10.5,
+    color: colors.mint
+  },
+  eventTitle: {
+    ...typography.heading,
+    fontSize: 17,
+    marginBottom: 2
+  },
+  eventVenue: {
+    ...typography.bodySm,
+    fontWeight: "700",
+    color: colors.inkSoft,
+    marginBottom: 6
+  },
+  eventDesc: {
+    ...typography.body,
+    marginBottom: spacing.md
   },
   attendeesText: {
     ...typography.bodySm,
-    color: colors.mint,
-    fontWeight: "800"
+    color: colors.inkSoft
   },
-  itemTitle: {
-    ...typography.h3,
-    fontSize: 17,
-    marginBottom: 4
-  },
-  description: {
-    ...typography.body,
-    lineHeight: 20,
-    marginBottom: 12
-  },
-  eventMetaContainer: {
-    backgroundColor: colors.surfaceInset,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
+  fab: {
+    position: "absolute",
+    bottom: 22,
+    right: 18,
+    width: 56,
+    height: 56,
     borderRadius: radii.md,
-    padding: 10,
-    gap: 6,
-    marginBottom: 12
-  },
-  eventMetaRow: {
-    flexDirection: "row",
+    backgroundColor: colors.mint,
+    borderWidth: 2,
+    borderColor: colors.borderInk,
     alignItems: "center",
-    gap: 6
-  },
-  eventMetaText: {
-    ...typography.bodySm,
-    color: colors.ink,
-    fontWeight: "600"
+    justifyContent: "center",
+    ...shadows.hard
   }
 });

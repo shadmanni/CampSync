@@ -13,23 +13,23 @@ export const VerifiedDoneScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* Badge Icon */}
+        {/* Celebration Shield */}
         <View style={styles.badgeWrapper}>
           <ShieldCheck size={52} color={colors.mint} />
           <View style={styles.checkPill}>
-            <Check size={14} color="#FFFFFF" />
+            <Check size={14} color={colors.surface} />
           </View>
         </View>
 
         <Text style={styles.title}>You're Verified!</Text>
         <Text style={styles.subtitle}>
-          Welcome to the verified CampusSync student network. Your university identity has been authenticated.
+          Welcome to the verified CampusSync student network. Your university identity is authenticated.
         </Text>
 
         {/* Student Profile Card */}
         <PopCard style={styles.profileCard}>
           <View style={styles.profileHeader}>
-            <PopAvatar name={user?.name || "Alex Rivera"} size={48} accentColor={colors.violet} />
+            <PopAvatar name={user?.name || "Student"} size={48} />
             <View style={styles.profileMeta}>
               <Text style={styles.userName}>{user?.name || "Alex Rivera"}</Text>
               <Text style={styles.userEmail}>{user?.email || "alex.tech@college.edu"}</Text>
@@ -44,7 +44,7 @@ export const VerifiedDoneScreen = () => {
               <Text style={styles.detailValue}>{user?.department || "Computer Science"}</Text>
             </View>
             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>STATUS</Text>
+              <Text style={styles.detailLabel}>CAMPUS STATUS</Text>
               <Text style={[styles.detailValue, { color: colors.mint }]}>Active & Verified</Text>
             </View>
           </View>
@@ -56,7 +56,7 @@ export const VerifiedDoneScreen = () => {
           onPress={enterCampus}
           variant="violet"
           size="lg"
-          icon={<ArrowRight size={18} color="#FFFFFF" />}
+          icon={<ArrowRight size={18} color={colors.surface} />}
           style={styles.continueBtn}
         />
       </View>
@@ -80,29 +80,30 @@ const styles = StyleSheet.create({
     borderRadius: 48,
     backgroundColor: colors.mintSoft,
     borderWidth: 2,
-    borderColor: colors.lineStrong,
-    ...shadows.hard,
+    borderColor: colors.borderInk,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.lg
+    marginBottom: spacing.lg,
+    ...shadows.hard
   },
   checkPill: {
     position: "absolute",
-    bottom: 2,
-    right: 4,
+    bottom: 0,
+    right: 2,
     width: 26,
     height: 26,
     borderRadius: 13,
     backgroundColor: colors.mint,
-    alignItems: "center",
-    justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: colors.lineStrong
+    borderColor: colors.borderInk,
+    alignItems: "center",
+    justifyContent: "center"
   },
   title: {
-    ...typography.h1,
+    ...typography.hero,
+    fontSize: 28,
     textAlign: "center",
-    marginBottom: spacing.xs
+    marginBottom: 4
   },
   subtitle: {
     ...typography.body,
@@ -113,24 +114,25 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     width: "100%",
+    padding: spacing.lg,
     marginBottom: spacing.xl
   },
   profileHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12
+    alignItems: "center"
   },
   profileMeta: {
+    marginLeft: spacing.md,
     flex: 1
   },
   userName: {
-    ...typography.h3,
+    ...typography.heading,
     fontSize: 18
   },
   userEmail: {
     ...typography.bodySm,
     color: colors.violet,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 2
   },
   divider: {
@@ -146,17 +148,15 @@ const styles = StyleSheet.create({
     flex: 1
   },
   detailLabel: {
-    ...typography.bodySm,
-    fontSize: 10,
+    ...typography.caption,
     color: colors.inkFaint,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-    marginBottom: 4
+    fontSize: 10.5,
+    marginBottom: 2
   },
   detailValue: {
-    ...typography.body,
+    ...typography.badge,
     color: colors.ink,
-    fontWeight: "700"
+    fontSize: 13
   },
   continueBtn: {
     width: "100%"

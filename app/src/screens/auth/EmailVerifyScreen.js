@@ -8,7 +8,7 @@ import {
   Platform,
   ScrollView
 } from "react-native";
-import { ShieldCheck, Mail, ArrowRight, Lock, CheckCircle2 } from "lucide-react-native";
+import { ShieldCheck, Mail, ArrowRight, Lock, CheckCircle2, Sparkles } from "lucide-react-native";
 import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { authService } from "../../services/authService";
 import { PopCard } from "../../components/common/PopCard";
@@ -47,59 +47,73 @@ export const EmailVerifyScreen = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* Brand Banner */}
-        <View style={styles.heroSection}>
-          <View style={styles.brandBadge}>
-            <Text style={styles.brandText}>CS</Text>
+        <View style={styles.brandHero}>
+          <View style={styles.badgeRow}>
+            <View style={styles.csLogoBadge}>
+              <Text style={styles.csLogoText}>CS</Text>
+            </View>
+            <View style={styles.tagBadge}>
+              <Sparkles size={13} color={colors.violet} />
+              <Text style={styles.tagText}>ONE CAMPUS • ONE APP</Text>
+            </View>
           </View>
-          <Text style={styles.heroTitle}>Campus Verification</Text>
+
+          <Text style={styles.heroTitle}>CampusSync</Text>
           <Text style={styles.heroSubtitle}>
-            One app for everything that happens on campus. Enter your official university email to join.
+            Verified university community for discussions, peer carpools, live bidding, and local perks.
           </Text>
         </View>
 
-        {/* Pop Card Form */}
-        <PopCard style={styles.card}>
-          <Text style={styles.inputLabel}>Official College Email</Text>
-          <View style={styles.inputWrapper}>
-            <Mail size={18} color={colors.inkFaint} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="yourname@college.edu"
-              placeholderTextColor={colors.inkFaint}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setErrorMsg("");
-              }}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoCorrect={false}
+        {/* Floating Input Card */}
+        <View style={styles.cardWrapper}>
+          <PopCard style={styles.card}>
+            <Text style={styles.cardTitle}>Student Verification</Text>
+            <Text style={styles.cardSubtitle}>
+              Enter your official college email address to receive your 6-digit access code.
+            </Text>
+
+            <Text style={styles.inputLabel}>OFFICIAL COLLEGE EMAIL</Text>
+            <View style={styles.inputBox}>
+              <Mail size={18} color={colors.ink} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="yourname@college.edu"
+                placeholderTextColor={colors.inkFaint}
+                value={email}
+                onChangeText={(t) => {
+                  setEmail(t);
+                  setErrorMsg("");
+                }}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoCorrect={false}
+              />
+            </View>
+
+            {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+
+            <View style={styles.hintRow}>
+              <CheckCircle2 size={13} color={colors.mint} />
+              <Text style={styles.hintText}>Accepts @college.edu, @campus.ac.in, etc.</Text>
+            </View>
+
+            <PopButton
+              title="Send Verification Code"
+              onPress={handleRequestOtp}
+              loading={loading}
+              variant="violet"
+              size="lg"
+              icon={<ArrowRight size={18} color={colors.surface} />}
+              style={styles.submitBtn}
             />
-          </View>
-
-          {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
-
-          <View style={styles.domainPill}>
-            <CheckCircle2 size={13} color={colors.mint} />
-            <Text style={styles.domainText}>Allowed: @college.edu, @campus.ac.in, @univ.edu</Text>
-          </View>
-
-          <PopButton
-            title="Send Verification Code"
-            onPress={handleRequestOtp}
-            loading={loading}
-            variant="violet"
-            size="lg"
-            icon={<ArrowRight size={18} color="#FFFFFF" />}
-            style={styles.submitBtn}
-          />
-        </PopCard>
+          </PopCard>
+        </View>
 
         {/* Security Badges */}
         <View style={styles.trustBadges}>
           <View style={styles.trustItem}>
-            <Lock size={14} color={colors.violet} />
-            <Text style={styles.trustText}>6-Digit OTP Protected</Text>
+            <Lock size={14} color={colors.ink} />
+            <Text style={styles.trustText}>Encrypted Auth</Text>
           </View>
           <View style={styles.trustItem}>
             <ShieldCheck size={14} color={colors.mint} />
@@ -117,87 +131,123 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas
   },
   scrollContent: {
-    padding: spacing.containerPadding,
-    paddingTop: 60,
-    flexGrow: 1
+    flexGrow: 1,
+    paddingBottom: spacing.xl
   },
-  heroSection: {
-    alignItems: "center",
-    marginBottom: spacing.xl
+  brandHero: {
+    paddingTop: 55,
+    paddingBottom: 25,
+    paddingHorizontal: spacing.containerPadding,
+    alignItems: "center"
   },
-  brandBadge: {
-    width: 54,
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: colors.ink,
+  badgeRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.lineStrong,
-    ...shadows.hard,
+    gap: spacing.sm,
     marginBottom: spacing.md
   },
-  brandText: {
-    color: colors.inkInvert,
+  csLogoBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.sm,
+    backgroundColor: colors.violet,
+    borderWidth: 1.5,
+    borderColor: colors.borderInk,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadows.hardSm
+  },
+  csLogoText: {
+    color: colors.surface,
     fontWeight: "900",
-    fontSize: 22,
-    letterSpacing: -1
+    fontSize: 16
+  },
+  tagBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: colors.violetSoft,
+    borderWidth: 1.5,
+    borderColor: colors.borderInk,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.pill
+  },
+  tagText: {
+    ...typography.badge,
+    color: colors.violet,
+    fontSize: 11
   },
   heroTitle: {
-    ...typography.h1,
+    ...typography.hero,
+    fontSize: 32,
     textAlign: "center",
-    marginBottom: spacing.xs
+    marginBottom: 6
   },
   heroSubtitle: {
     ...typography.body,
     textAlign: "center",
-    paddingHorizontal: spacing.md,
+    maxWidth: 320,
     lineHeight: 20
   },
+  cardWrapper: {
+    paddingHorizontal: spacing.containerPadding
+  },
   card: {
-    marginBottom: spacing.xl
+    padding: spacing.lg
+  },
+  cardTitle: {
+    ...typography.heading,
+    fontSize: 18,
+    marginBottom: 4
+  },
+  cardSubtitle: {
+    ...typography.body,
+    fontSize: 13,
+    marginBottom: spacing.lg
   },
   inputLabel: {
-    ...typography.label,
-    fontSize: 13,
-    marginBottom: 8
+    ...typography.caption,
+    color: colors.ink,
+    fontSize: 11,
+    marginBottom: 6
   },
-  inputWrapper: {
+  inputBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surfaceInset,
+    backgroundColor: colors.surface,
     borderRadius: radii.md,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 12,
-    marginBottom: 10
+    borderColor: colors.borderInk,
+    paddingHorizontal: spacing.md,
+    height: 48,
+    marginBottom: spacing.sm
   },
   inputIcon: {
-    marginRight: 8
+    marginRight: spacing.sm
   },
   input: {
     flex: 1,
-    height: 48,
     color: colors.ink,
     fontSize: 15,
     fontWeight: "600"
   },
   errorText: {
     ...typography.bodySm,
-    color: colors.danger,
+    color: colors.rose,
     fontWeight: "700",
-    marginBottom: 8
+    marginBottom: spacing.sm
   },
-  domainPill: {
+  hintRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginBottom: spacing.lg
   },
-  domainText: {
+  hintText: {
     ...typography.bodySm,
-    color: colors.inkFaint,
-    fontSize: 11
+    fontSize: 11.5,
+    color: colors.inkSoft
   },
   submitBtn: {
     width: "100%"
@@ -205,7 +255,8 @@ const styles = StyleSheet.create({
   trustBadges: {
     flexDirection: "row",
     justifyContent: "space-around",
-    paddingVertical: spacing.md
+    paddingTop: spacing.xl,
+    paddingHorizontal: spacing.containerPadding
   },
   trustItem: {
     flexDirection: "row",
@@ -213,8 +264,8 @@ const styles = StyleSheet.create({
     gap: 6
   },
   trustText: {
-    ...typography.bodySm,
-    color: colors.inkSoft,
-    fontWeight: "700"
+    ...typography.caption,
+    color: colors.ink,
+    fontSize: 12
   }
 });

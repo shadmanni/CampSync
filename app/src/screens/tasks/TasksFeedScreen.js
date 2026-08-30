@@ -6,136 +6,113 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  TextInput,
-  Modal,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Alert
 } from "react-native";
 import {
   CheckSquare,
   Search,
   Plus,
-  Coins,
-  MapPin,
   Clock,
+  MapPin,
+  Coins,
   CheckCircle2,
-  AlertCircle,
-  X,
-  Send
+  AlertCircle
 } from "lucide-react-native";
 import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { tasksService } from "../../services/tasksService";
-import { useAuth } from "../../context/AuthContext";
-import { PopHeader } from "../../components/common/PopHeader";
+import { socketService } from "../../services/socketService";
+import { HeaderBar } from "../../components/common/HeaderBar";
 import { PopCard } from "../../components/common/PopCard";
 import { PopPill } from "../../components/common/PopPill";
 import { PopButton } from "../../components/common/PopButton";
 import { PopAvatar } from "../../components/common/PopAvatar";
+import { SkeletonLoader } from "../../components/common/SkeletonLoader";
+import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
+import { CreateTaskModal } from "./CreateTaskModal";
 
-const TASK_CATEGORIES = ["All", "Printout", "Food Delivery", "Luggage & Moving", "Errands", "Academic Help"];
-const STATUS_FILTERS = [
-  { id: "ALL", label: "All Gigs" },
-  { id: "OPEN", label: "🟢 Open" },
-  { id: "ASSIGNED", label: "🟡 In Progress" },
-  { id: "COMPLETED", label: "✅ Done" }
+const TASK_CATEGORIES = [
+  "All",
+  "Printout & Stationary",
+  "Luggage & Moving",
+  "Courier & Parcel",
+  "Food Delivery",
+  "Academic Help",
+  "Errands"
 ];
 
-export const TasksFeedScreen = ({ navigation }) => {
-  const { user } = useAuth();
-
+export const TasksFeedScreen = () => {
   const [tasks, setTasks] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedStatus, setSelectedStatus] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL"); // 'ALL' | 'OPEN' | 'ASSIGNED' | 'COMPLETED'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [claimingId, setClaimingId] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-
-  // Form State
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Printout");
-  const [reward, setReward] = useState("70");
-  const [location, setLocation] = useState("Hostel Block A");
-  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   const fetchTasks = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
-      const data = await tasksService.getTasks(selectedStatus, selectedCategory);
+      const data = await tasksService.getTasks(statusFilter, selectedCategory);
       setTasks(data || []);
     } catch (err) {
-      console.warn("Failed to load tasks:", err.message);
+      setError(err.message || "Failed to load campus tasks.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedStatus, selectedCategory]);
+  }, [statusFilter, selectedCategory]);
 
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
+
+  // Real-time task events
+  useEffect(() => {
+    const handleTaskClaimed = (update) => {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === update.taskId
+            ? { ...t, status: "ASSIGNED", claimedBy: update.claimedBy }
+            : t
+        )
+      );
+    };
+
+    const handleTaskCompleted = (update) => {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === update.taskId ? { ...t, status: "COMPLETED" } : t))
+      );
+    };
+
+    socketService.on("task:claimed", handleTaskClaimed);
+    socketService.on("task:completed", handleTaskCompleted);
+    return () => {
+      socketService.off("task:claimed", handleTaskClaimed);
+      socketService.off("task:completed", handleTaskCompleted);
+    };
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchTasks(true);
   };
 
-  const handleClaimTask = async (taskId) => {
-    setClaimingId(taskId);
-    try {
-      const res = await tasksService.claimTask(taskId);
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: "ASSIGNED", claimedBy: user?.name || "You" } : t))
-      );
-      Alert.alert("Gig Claimed! ⚡", "You have claimed this task. Please complete it and coordinate with the requester.");
-    } catch (err) {
-      Alert.alert("Claim Notice", err.message || "Could not claim task.");
-    } finally {
-      setClaimingId(null);
-    }
-  };
-
-  const handleCompleteTask = async (taskId) => {
-    try {
-      await tasksService.completeTask(taskId);
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: "COMPLETED" } : t))
-      );
-      Alert.alert("Task Completed! 🎉", "Bounty reward has been marked as settled.");
-    } catch (err) {
-      Alert.alert("Error", err.message || "Failed to mark complete.");
-    }
-  };
-
-  const handleCreateTask = async () => {
-    if (!title.trim() || !description.trim()) {
-      Alert.alert("Required Fields", "Please enter both task title and description.");
+  const handleClaim = async (task) => {
+    if (task.status !== "OPEN") {
+      Alert.alert("Task Unavailable", "This gig has already been claimed by another student.");
       return;
     }
 
-    setSubmitting(true);
     try {
-      const newTask = await tasksService.createTask({
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        reward: Number(reward) || 50,
-        location: location.trim() || "Campus",
-        requesterName: user?.name || "Verified Student"
-      });
-
-      setTasks((prev) => [newTask, ...prev]);
-      setSubmitting(false);
-      setTitle("");
-      setDescription("");
-      setModalOpen(false);
-      Alert.alert("Success! ⚡", "Your campus gig has been posted.");
+      await tasksService.claimTask(task.id);
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: "ASSIGNED" } : t))
+      );
+      Alert.alert("Gig Claimed!", `You've accepted this task for ₹${task.reward}. Complete it and earn your bounty!`);
     } catch (err) {
-      setSubmitting(false);
-      Alert.alert("Error", err.message || "Failed to create task.");
+      Alert.alert("Claim Failed", err.message || "Task already claimed.");
     }
   };
 
@@ -143,67 +120,84 @@ export const TasksFeedScreen = ({ navigation }) => {
     const isOpen = item.status === "OPEN";
     const isAssigned = item.status === "ASSIGNED";
     const isCompleted = item.status === "COMPLETED";
-    const isClaiming = claimingId === item.id;
 
     return (
       <PopCard style={styles.card}>
         <View style={styles.cardTop}>
-          <View style={[
-            styles.statusTag,
-            isOpen && styles.statusTagOpen,
-            isAssigned && styles.statusTagAssigned,
-            isCompleted && styles.statusTagDone
-          ]}>
-            <Text style={[
-              styles.statusText,
-              isOpen && styles.statusTextOpen,
-              isAssigned && styles.statusTextAssigned,
-              isCompleted && styles.statusTextDone
-            ]}>
+          <View
+            style={[
+              styles.statusTag,
+              isOpen && styles.statusOpen,
+              isAssigned && styles.statusAssigned,
+              isCompleted && styles.statusCompleted
+            ]}
+          >
+            <Text
+              style={[
+                styles.statusText,
+                isOpen && styles.statusTextOpen,
+                isAssigned && styles.statusTextAssigned,
+                isCompleted && styles.statusTextCompleted
+              ]}
+            >
               {isOpen ? "🟢 OPEN GIG" : isAssigned ? "🟡 IN PROGRESS" : "✅ COMPLETED"}
             </Text>
           </View>
 
-          <View style={styles.bountyBadge}>
-            <Coins size={13} color={colors.ink} />
-            <Text style={styles.bountyText}>₹{item.reward || 50}</Text>
+          <View style={styles.rewardBadge}>
+            <Coins size={14} color={colors.ink} />
+            <Text style={styles.rewardText}>₹{item.reward}</Text>
           </View>
         </View>
 
         <Text style={styles.taskTitle}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
+        <Text style={styles.description} numberOfLines={2}>
+          {item.description}
+        </Text>
 
-        <View style={styles.metaRow}>
-          <View style={styles.locationPill}>
-            <MapPin size={12} color={colors.inkFaint} />
-            <Text style={styles.locationText}>{item.location || "Campus"}</Text>
+        {/* Location & Time Box */}
+        <PopCard style={styles.locationBox} variant="inset">
+          <View style={styles.locRow}>
+            <MapPin size={13} color={colors.ink} />
+            <Text style={styles.locText} numberOfLines={1}>
+              {item.location || "Campus Premises"}
+            </Text>
           </View>
-          <Text style={styles.requesterText}>By {item.requesterName || "Student"}</Text>
-        </View>
+          <View style={styles.timeRow}>
+            <Clock size={13} color={colors.inkFaint} />
+            <Text style={styles.timeText}>{item.timeEstimate || "20 mins"}</Text>
+          </View>
+        </PopCard>
 
         <View style={styles.cardFooter}>
+          <View style={styles.authorRow}>
+            <PopAvatar name={item.authorName || "Student"} size={26} />
+            <Text style={styles.authorName} numberOfLines={1}>
+              {item.authorName || "Student"}
+            </Text>
+          </View>
+
           {isOpen ? (
             <PopButton
-              title="Claim Gig (Get Paid)"
-              onPress={() => handleClaimTask(item.id)}
-              loading={isClaiming}
+              title="Claim Gig"
+              onPress={() => handleClaim(item)}
               variant="sun"
               size="sm"
-              style={{ width: "100%" }}
             />
           ) : isAssigned ? (
             <PopButton
-              title="Mark as Completed"
-              onPress={() => handleCompleteTask(item.id)}
+              title="In Progress"
+              disabled
               variant="surface"
               size="sm"
-              style={{ width: "100%" }}
             />
           ) : (
-            <View style={styles.completedBanner}>
-              <CheckCircle2 size={14} color={colors.mint} />
-              <Text style={styles.completedBannerText}>Bounty Settled</Text>
-            </View>
+            <PopButton
+              title="Completed ✓"
+              disabled
+              variant="surface"
+              size="sm"
+            />
           )}
         </View>
       </PopCard>
@@ -212,15 +206,35 @@ export const TasksFeedScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <PopHeader
+      <HeaderBar
         title="CampusTasks"
-        subtitle="Micro-Errands & Bounties"
+        subtitle="Quick Peer Gigs & Campus Micro-Bounties"
         accentColor={colors.sun}
-        onProfilePress={() => navigation.navigate("Profile")}
+        onNotificationPress={() => {}}
       />
 
-      {/* Category Pills */}
-      <View style={styles.categoryContainer}>
+      {/* Status Filter Tabs */}
+      <View style={styles.statusRow}>
+        {[
+          { id: "ALL", label: "All Gigs" },
+          { id: "OPEN", label: "🟢 Open" },
+          { id: "ASSIGNED", label: "🟡 Active" },
+          { id: "COMPLETED", label: "✅ Done" }
+        ].map((s) => (
+          <TouchableOpacity
+            key={s.id}
+            style={[styles.statusChip, statusFilter === s.id && styles.statusChipActive]}
+            onPress={() => setStatusFilter(s.id)}
+          >
+            <Text style={[styles.statusChipText, statusFilter === s.id && styles.statusChipTextActive]}>
+              {s.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Categories */}
+      <View style={styles.categoryRow}>
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -231,113 +245,66 @@ export const TasksFeedScreen = ({ navigation }) => {
               label={item}
               active={selectedCategory === item}
               accentColor={colors.sun}
-              accentSoft={colors.sunSoft}
+              accentSoftColor={colors.sunSoft}
               onPress={() => setSelectedCategory(item)}
             />
           )}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          contentContainerStyle={styles.categoryList}
         />
       </View>
 
       {/* Tasks List */}
-      <FlatList
-        data={tasks}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTaskCard}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.sun}
-            colors={[colors.sun]}
-          />
-        }
-      />
+      {loading && !refreshing ? (
+        <SkeletonLoader count={3} />
+      ) : error ? (
+        <ErrorState
+          title="Could not load gigs"
+          message={error}
+          onRetry={() => fetchTasks()}
+        />
+      ) : (
+        <FlatList
+          data={tasks}
+          keyExtractor={(item) => item.id}
+          renderItem={renderTaskCard}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.sun}
+              colors={[colors.sun]}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon={<CheckSquare size={32} color={colors.sun} />}
+              title="No tasks found"
+              description="Post a printout pickup, parcel errand, or moving gig!"
+              actionTitle="Post a Gig"
+              onAction={() => setCreateModalVisible(true)}
+              accentVariant="sun"
+            />
+          }
+        />
+      )}
 
-      {/* FAB */}
+      {/* Floating Plus */}
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.85}
-        onPress={() => setModalOpen(true)}
+        onPress={() => setCreateModalVisible(true)}
       >
-        <Plus size={26} color={colors.ink} strokeWidth={2.8} />
+        <Plus size={24} color={colors.ink} />
       </TouchableOpacity>
 
-      {/* Create Task Modal */}
-      <Modal visible={modalOpen} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Post Campus Gig</Text>
-              <TouchableOpacity onPress={() => setModalOpen(false)} style={styles.modalClose}>
-                <X size={18} color={colors.ink} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
-              <Text style={styles.label}>CATEGORY</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-                {["Printout", "Food Delivery", "Luggage & Moving", "Errands"].map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[styles.catOption, category === cat && styles.catOptionActive]}
-                    onPress={() => setCategory(cat)}
-                  >
-                    <Text style={[styles.catOptionText, category === cat && styles.catOptionTextActive]}>
-                      {cat}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={styles.label}>GIG TITLE</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Need color printout of 20-page report"
-                placeholderTextColor={colors.inkFaint}
-                value={title}
-                onChangeText={setTitle}
-              />
-
-              <Text style={styles.label}>DETAILS & INSTRUCTIONS</Text>
-              <TextInput
-                style={[styles.input, { minHeight: 80 }]}
-                placeholder="Explain pickup spot, deadline, or drop location..."
-                placeholderTextColor={colors.inkFaint}
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-
-              <Text style={styles.label}>BOUNTY REWARD (₹)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 70"
-                placeholderTextColor={colors.inkFaint}
-                value={reward}
-                onChangeText={setReward}
-                keyboardType="numeric"
-              />
-
-              <PopButton
-                title="Post Gig & Offer Bounty"
-                onPress={handleCreateTask}
-                loading={submitting}
-                variant="sun"
-                size="lg"
-                icon={<Send size={16} color={colors.ink} />}
-                style={{ marginTop: 8, marginBottom: 20 }}
-              />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <CreateTaskModal
+        visible={createModalVisible}
+        onClose={() => setCreateModalVisible(false)}
+        onCreated={(newTask) => {
+          setTasks((prev) => [newTask, ...prev]);
+        }}
+      />
     </View>
   );
 };
@@ -347,208 +314,168 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.canvas
   },
-  categoryContainer: {
-    paddingVertical: 12
+  statusRow: {
+    flexDirection: "row",
+    paddingHorizontal: spacing.containerPadding,
+    gap: spacing.xs,
+    marginTop: spacing.md
+  },
+  statusChip: {
+    flex: 1,
+    backgroundColor: colors.surface2,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    paddingVertical: 7,
+    borderRadius: radii.md,
+    alignItems: "center"
+  },
+  statusChipActive: {
+    backgroundColor: colors.sun,
+    borderColor: colors.borderInk,
+    ...shadows.hardSm
+  },
+  statusChipText: {
+    ...typography.badge,
+    fontSize: 11,
+    color: colors.inkSoft
+  },
+  statusChipTextActive: {
+    color: colors.ink
+  },
+  categoryRow: {
+    paddingVertical: spacing.sm
+  },
+  categoryList: {
+    paddingHorizontal: spacing.containerPadding
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100
+    paddingHorizontal: spacing.containerPadding,
+    paddingBottom: 90
   },
   card: {
-    marginBottom: 14
+    marginBottom: spacing.md
   },
   cardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8
+    marginBottom: spacing.sm
   },
   statusTag: {
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: colors.borderInk,
+    paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: radii.full
+    borderRadius: radii.pill
   },
-  statusTagOpen: {
+  statusOpen: {
     backgroundColor: colors.mintSoft
+  },
+  statusAssigned: {
+    backgroundColor: colors.sunSoft
+  },
+  statusCompleted: {
+    backgroundColor: colors.surfaceInset
+  },
+  statusText: {
+    ...typography.badge,
+    fontSize: 10.5
   },
   statusTextOpen: {
     color: colors.mint
   },
-  statusTagAssigned: {
-    backgroundColor: colors.sunSoft
-  },
   statusTextAssigned: {
     color: colors.ink
   },
-  statusTagDone: {
-    backgroundColor: colors.surfaceInset
-  },
-  statusTextDone: {
+  statusTextCompleted: {
     color: colors.inkFaint
   },
-  statusText: {
-    fontSize: 10,
-    fontWeight: "800"
-  },
-  bountyBadge: {
+  rewardBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: colors.sun,
+    backgroundColor: colors.sunSoft,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
+    borderColor: colors.borderInk,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: radii.full,
+    borderRadius: radii.pill,
     ...shadows.hardSm
   },
-  bountyText: {
+  rewardText: {
+    ...typography.badge,
     color: colors.ink,
-    fontWeight: "900",
     fontSize: 13
   },
   taskTitle: {
-    ...typography.h3,
-    fontSize: 17,
+    ...typography.heading,
+    fontSize: 16.5,
     marginBottom: 4
   },
   description: {
     ...typography.body,
-    lineHeight: 20,
-    marginBottom: 12
+    marginBottom: spacing.sm
   },
-  metaRow: {
+  locationBox: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12
+    padding: spacing.sm,
+    marginBottom: spacing.md
   },
-  locationPill: {
+  locRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flex: 1,
+    marginRight: spacing.sm
+  },
+  locText: {
+    ...typography.bodySm,
+    color: colors.ink,
+    fontWeight: "600",
+    fontSize: 11.5
+  },
+  timeRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4
   },
-  locationText: {
+  timeText: {
     ...typography.bodySm,
-    color: colors.inkSoft,
-    fontWeight: "600"
-  },
-  requesterText: {
-    ...typography.bodySm,
-    color: colors.inkFaint
+    fontSize: 11
   },
   cardFooter: {
-    marginTop: 2
-  },
-  completedBanner: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 8,
-    backgroundColor: colors.mintSoft,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong
-  },
-  completedBannerText: {
-    ...typography.bodySm,
-    color: colors.mint,
-    fontWeight: "800"
-  },
-  fab: {
-    position: "absolute",
-    bottom: 24,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.sun,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.lineStrong,
-    ...shadows.hard,
-    elevation: 6
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(23, 21, 15, 0.5)",
-    justifyContent: "flex-end"
-  },
-  modalSheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    borderWidth: 2,
-    borderBottomWidth: 0,
-    borderColor: colors.lineStrong,
-    maxHeight: "88%",
-    paddingBottom: 20,
-    ...shadows.hardLg
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.lineStrong
-  },
-  modalTitle: {
-    ...typography.h3,
-    fontSize: 18
-  },
-  modalClose: {
-    width: 34,
-    height: 34,
-    borderRadius: radii.full,
-    backgroundColor: colors.canvas,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
     alignItems: "center",
-    justifyContent: "center"
+    borderTopWidth: 1.5,
+    borderTopColor: colors.line,
+    paddingTop: spacing.sm
   },
-  label: {
-    ...typography.label,
-    fontSize: 11,
-    color: colors.inkFaint,
-    letterSpacing: 0.5,
-    marginBottom: 8
+  authorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    maxWidth: 160
   },
-  catOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.full,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.surfaceInset
-  },
-  catOptionActive: {
-    backgroundColor: colors.sun
-  },
-  catOptionText: {
+  authorName: {
     ...typography.bodySm,
-    fontSize: 12,
     color: colors.ink,
     fontWeight: "700"
   },
-  catOptionTextActive: {
-    color: colors.ink
-  },
-  input: {
-    backgroundColor: colors.surfaceInset,
+  fab: {
+    position: "absolute",
+    bottom: 22,
+    right: 18,
+    width: 56,
+    height: 56,
     borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "600",
-    marginBottom: 16
+    backgroundColor: colors.sun,
+    borderWidth: 2,
+    borderColor: colors.borderInk,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadows.hard
   }
 });

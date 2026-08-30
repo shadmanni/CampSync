@@ -13,7 +13,8 @@ import {
   ArrowLeft,
   ThumbsUp,
   MessageSquare,
-  Send
+  Send,
+  Sparkles
 } from "lucide-react-native";
 import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { connectService } from "../../services/connectService";
@@ -71,7 +72,7 @@ export const PostDetailScreen = ({ route, navigation }) => {
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
           <ArrowLeft size={18} color={colors.ink} />
         </TouchableOpacity>
@@ -84,17 +85,18 @@ export const PostDetailScreen = ({ route, navigation }) => {
         <PopCard style={styles.mainCard}>
           <View style={styles.authorRow}>
             <PopAvatar
-              name={post.authorName || "Verified Student"}
+              name={post.authorName || "Student"}
               anonymous={post.isAnonymous}
-              size={42}
-              accentColor={colors.violet}
+              size={40}
             />
             <View style={styles.authorMeta}>
-              <Text style={styles.authorName}>{post.authorName || "Verified Student"}</Text>
+              <Text style={styles.authorName}>
+                {post.authorName || "Verified Student"}
+              </Text>
               <Text style={styles.timeText}>{post.createdAt || "Recently"}</Text>
             </View>
-            <View style={styles.tagBadge}>
-              <Text style={styles.tagText}>{post.category || "General"}</Text>
+            <View style={[styles.categoryBadge, { backgroundColor: colors.violetSoft }]}>
+              <Text style={styles.categoryBadgeText}>{post.category || "General"}</Text>
             </View>
           </View>
 
@@ -107,13 +109,13 @@ export const PostDetailScreen = ({ route, navigation }) => {
               onPress={handleUpvote}
               activeOpacity={0.7}
             >
-              <ThumbsUp size={15} color={colors.violet} />
+              <ThumbsUp size={14} color={colors.violet} />
               <Text style={styles.upvoteText}>{post.upvotes || 0} upvotes</Text>
             </TouchableOpacity>
 
-            <View style={styles.replyCounter}>
-              <MessageSquare size={15} color={colors.inkFaint} />
-              <Text style={styles.replyCounterText}>{comments.length} replies</Text>
+            <View style={styles.repliesCountRow}>
+              <MessageSquare size={14} color={colors.inkSoft} />
+              <Text style={styles.repliesCountText}>{comments.length} replies</Text>
             </View>
           </View>
         </PopCard>
@@ -121,16 +123,18 @@ export const PostDetailScreen = ({ route, navigation }) => {
         {/* Section Heading */}
         <Text style={styles.sectionHeading}>Responses ({comments.length})</Text>
 
-        {/* Comments List */}
+        {/* Comments */}
         {comments.length === 0 ? (
           <PopCard style={styles.emptyComments} variant="inset">
-            <Text style={styles.emptyText}>No replies yet. Be the first to share your thoughts!</Text>
+            <Text style={styles.emptyText}>
+              No replies yet. Be the first student to join the conversation!
+            </Text>
           </PopCard>
         ) : (
           comments.map((c, idx) => (
             <PopCard key={c.id || idx} style={styles.commentCard}>
               <View style={styles.commentHeader}>
-                <PopAvatar name={c.authorName || "Student"} size={30} accentColor={colors.violet} />
+                <PopAvatar name={c.authorName || "Student"} size={28} />
                 <View style={styles.commentMeta}>
                   <Text style={styles.commentAuthor}>{c.authorName || "Student"}</Text>
                   <Text style={styles.commentTime}>{c.createdAt || "Recently"}</Text>
@@ -142,8 +146,8 @@ export const PostDetailScreen = ({ route, navigation }) => {
         )}
       </ScrollView>
 
-      {/* Comment Input Composer */}
-      <View style={styles.composerWrapper}>
+      {/* Sticky Bottom Composer */}
+      <View style={styles.composerContainer}>
         <TextInput
           style={styles.composerInput}
           placeholder="Share your thoughts or answer..."
@@ -156,9 +160,9 @@ export const PostDetailScreen = ({ route, navigation }) => {
           style={[styles.sendBtn, !newComment.trim() && styles.sendBtnDisabled]}
           onPress={handleAddComment}
           disabled={!newComment.trim() || submitting}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <Send size={16} color="#FFFFFF" />
+          <Send size={16} color={colors.surface} />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -174,85 +178,83 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.containerPadding,
     paddingTop: 50,
-    paddingBottom: 14,
-    backgroundColor: colors.canvas,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1.5,
-    borderBottomColor: colors.lineStrong
+    borderBottomColor: colors.borderInk
   },
   backBtn: {
     width: 38,
     height: 38,
-    borderRadius: radii.full,
-    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface2,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
+    borderColor: colors.borderInk,
     alignItems: "center",
     justifyContent: "center",
     ...shadows.hardSm
   },
   headerTitle: {
-    ...typography.h3,
-    fontSize: 18
+    ...typography.heading,
+    color: colors.ink
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 100
+    padding: spacing.containerPadding,
+    paddingBottom: 90
   },
   mainCard: {
-    marginBottom: 16
+    padding: spacing.lg,
+    marginBottom: spacing.lg
   },
   authorRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 12
+    marginBottom: spacing.md
   },
   authorMeta: {
+    marginLeft: spacing.sm,
     flex: 1
   },
   authorName: {
-    ...typography.label,
-    fontSize: 15
+    ...typography.badge,
+    fontSize: 14,
+    color: colors.ink
   },
   timeText: {
     ...typography.bodySm,
-    color: colors.inkFaint,
     fontSize: 11
   },
-  tagBadge: {
-    backgroundColor: colors.violetSoft,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 10,
+  categoryBadge: {
+    paddingHorizontal: 9,
     paddingVertical: 3,
-    borderRadius: radii.full
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderInk
   },
-  tagText: {
-    ...typography.bodySm,
-    color: colors.violet,
-    fontWeight: "800",
-    fontSize: 11
+  categoryBadgeText: {
+    ...typography.badge,
+    fontSize: 11,
+    color: colors.violet
   },
   postTitle: {
-    ...typography.h2,
-    fontSize: 19,
-    marginBottom: 6
+    ...typography.heading,
+    fontSize: 18,
+    marginBottom: spacing.sm
   },
   postBody: {
     ...typography.bodyLg,
-    color: colors.ink,
     lineHeight: 22,
-    marginBottom: 16
+    marginBottom: spacing.lg
   },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: spacing.lg,
     borderTopWidth: 1.5,
     borderTopColor: colors.line,
-    paddingTop: 12
+    paddingTop: spacing.md
   },
   upvoteBtn: {
     flexDirection: "row",
@@ -260,34 +262,34 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: colors.violetSoft,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
+    borderColor: colors.borderInk,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: radii.full,
+    borderRadius: radii.pill,
     ...shadows.hardSm
   },
   upvoteText: {
-    ...typography.bodySm,
+    ...typography.badge,
     color: colors.violet,
-    fontWeight: "800"
+    fontSize: 12
   },
-  replyCounter: {
+  repliesCountRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6
+    gap: 5
   },
-  replyCounterText: {
+  repliesCountText: {
     ...typography.bodySm,
-    color: colors.inkFaint
+    color: colors.inkSoft,
+    fontWeight: "600"
   },
   sectionHeading: {
-    ...typography.label,
+    ...typography.heading,
     fontSize: 15,
-    marginBottom: 12,
-    color: colors.ink
+    marginBottom: spacing.md
   },
   emptyComments: {
-    padding: 16,
+    padding: spacing.lg,
     alignItems: "center"
   },
   emptyText: {
@@ -295,68 +297,65 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   commentCard: {
-    marginBottom: 10,
-    padding: 12
+    marginBottom: spacing.sm,
+    padding: spacing.md
   },
   commentHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
     marginBottom: 6
   },
   commentMeta: {
+    marginLeft: spacing.sm,
     flex: 1
   },
   commentAuthor: {
-    ...typography.label,
-    fontSize: 13
+    ...typography.badge,
+    fontSize: 12.5,
+    color: colors.ink
   },
   commentTime: {
     ...typography.bodySm,
-    color: colors.inkFaint,
     fontSize: 10
   },
   commentBody: {
     ...typography.body,
-    color: colors.ink,
-    lineHeight: 19
+    color: colors.ink
   },
-  composerWrapper: {
+  composerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: colors.canvas,
+    paddingHorizontal: spacing.containerPadding,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
     borderTopWidth: 1.5,
-    borderTopColor: colors.lineStrong
+    borderTopColor: colors.borderInk
   },
   composerInput: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radii.full,
+    backgroundColor: colors.surface2,
+    borderRadius: radii.md,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderColor: colors.borderInk,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
     color: colors.ink,
     fontSize: 14,
-    fontWeight: "600",
-    maxHeight: 80,
-    ...shadows.hardSm
+    maxHeight: 80
   },
   sendBtn: {
     width: 42,
     height: 42,
-    borderRadius: 21,
+    borderRadius: radii.sm,
     backgroundColor: colors.violet,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
+    borderColor: colors.borderInk,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 8,
+    marginLeft: spacing.sm,
     ...shadows.hardSm
   },
   sendBtnDisabled: {
-    opacity: 0.4
+    opacity: 0.5
   }
 });

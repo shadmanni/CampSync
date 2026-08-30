@@ -16,7 +16,8 @@ export const SeatPips = ({ total = 4, available = 2, accentColor = colors.mint }
               styles.pip,
               {
                 backgroundColor: isTaken ? colors.inkFaint : accentColor,
-                opacity: isTaken ? 0.3 : 1
+                opacity: isTaken ? 0.35 : 1,
+                transform: [{ scale: isTaken ? 1 : 0.9 }]
               }
             ]}
           />
@@ -35,8 +36,6 @@ const styles = StyleSheet.create({
   pip: {
     width: 9,
     height: 9,
-    borderRadius: 3,
-    borderWidth: 1,
-    borderColor: colors.lineStrong
+    borderRadius: 3
   }
 });

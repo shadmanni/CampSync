@@ -6,103 +6,96 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Switch,
   ScrollView,
   KeyboardAvoidingView,
   Platform
 } from "react-native";
-import { X, Send, Shield, Sparkles } from "lucide-react-native";
+import { X, Plus, Coins, Clock } from "lucide-react-native";
 import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
-import { connectService } from "../../services/connectService";
+import { tasksService } from "../../services/tasksService";
 import { useAuth } from "../../context/AuthContext";
 import { PopButton } from "../../components/common/PopButton";
-import { PopCard } from "../../components/common/PopCard";
 
-const CATEGORIES = ["Academic", "General", "Lost & Found"];
+const TASK_CATEGORIES = [
+  "Printout & Stationary",
+  "Luggage & Moving",
+  "Courier & Parcel",
+  "Food Delivery",
+  "Academic Help",
+  "Errands"
+];
 
-export const CreatePostModal = ({ visible, onClose, onCreated }) => {
+export const CreateTaskModal = ({ visible, onClose, onCreated }) => {
   const { user } = useAuth();
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [category, setCategory] = useState("Academic");
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Printout & Stationary");
+  const [reward, setReward] = useState("70");
+  const [location, setLocation] = useState("Hostel Block B to Library");
+  const [timeEstimate, setTimeEstimate] = useState("20 mins");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleCreate = async () => {
     setErrorMsg("");
     if (!title.trim()) {
-      setErrorMsg("Please enter a discussion title.");
+      setErrorMsg("Please enter a task title.");
       return;
     }
-    if (!content.trim()) {
-      setErrorMsg("Please enter the discussion content.");
+    const numReward = Number(reward);
+    if (isNaN(numReward) || numReward <= 0) {
+      setErrorMsg("Please enter a valid reward amount in ₹.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const newPost = await connectService.createPost({
+      const newTask = await tasksService.createTask({
         title: title.trim(),
-        content: content.trim(),
+        description: description.trim(),
         category,
-        isAnonymous,
-        authorName: user?.name || "Verified Student"
+        reward: numReward,
+        location: location.trim(),
+        timeEstimate: timeEstimate.trim(),
+        authorName: user?.name || "Verified Student",
+        department: user?.department || "Computer Science"
       });
 
       setSubmitting(false);
-      setTitle("");
-      setContent("");
-      setIsAnonymous(false);
-      onCreated(newPost);
+      onCreated(newTask);
       onClose();
     } catch (err) {
       setSubmitting(false);
-      setErrorMsg(err.message || "Failed to publish post.");
+      setErrorMsg(err.message || "Failed to post gig.");
     }
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.overlay}
       >
         <View style={styles.modalContent}>
-          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>New Discussion</Text>
+            <Text style={styles.headerTitle}>Post a Campus Micro-Task</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <X size={18} color={colors.ink} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.formScroll} keyboardShouldPersistTaps="handled">
+          <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
             {/* Category */}
             <Text style={styles.fieldLabel}>CATEGORY</Text>
-            <View style={styles.categoryRow}>
-              {CATEGORIES.map((cat) => (
+            <View style={styles.catGrid}>
+              {TASK_CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat}
-                  style={[
-                    styles.catPill,
-                    category === cat && styles.catPillActive
-                  ]}
+                  style={[styles.catPill, category === cat && styles.catPillActive]}
                   onPress={() => setCategory(cat)}
-                  activeOpacity={0.8}
                 >
-                  <Text
-                    style={[
-                      styles.catText,
-                      category === cat && styles.catTextActive
-                    ]}
-                  >
+                  <Text style={[styles.catText, category === cat && styles.catTextActive]}>
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -110,56 +103,71 @@ export const CreatePostModal = ({ visible, onClose, onCreated }) => {
             </View>
 
             {/* Title */}
-            <Text style={styles.fieldLabel}>TOPIC TITLE</Text>
+            <Text style={styles.fieldLabel}>TASK TITLE</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Algorithms midterm study group?"
+              placeholder="e.g. Need 15-page Lab Report Printed & Bound"
               placeholderTextColor={colors.inkFaint}
               value={title}
               onChangeText={setTitle}
             />
 
-            {/* Content */}
-            <Text style={styles.fieldLabel}>DETAILS</Text>
+            {/* Reward & Time */}
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>REWARD BOUNTY (₹)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="70"
+                  placeholderTextColor={colors.inkFaint}
+                  value={reward}
+                  onChangeText={setReward}
+                  keyboardType="number-pad"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>TIME ESTIMATE</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="20 mins"
+                  placeholderTextColor={colors.inkFaint}
+                  value={timeEstimate}
+                  onChangeText={setTimeEstimate}
+                />
+              </View>
+            </View>
+
+            {/* Location */}
+            <Text style={styles.fieldLabel}>CAMPUS LOCATION / ROUTE</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Provide background context, question specifics, or venue notes..."
+              style={styles.input}
+              placeholder="e.g. Central Print Shop to Hostel B"
               placeholderTextColor={colors.inkFaint}
-              value={content}
-              onChangeText={setContent}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
+              value={location}
+              onChangeText={setLocation}
             />
 
-            {/* Anonymous Toggle */}
-            <PopCard style={styles.anonCard} variant="inset">
-              <View style={styles.anonLeft}>
-                <Shield size={18} color={isAnonymous ? colors.violet : colors.inkFaint} />
-                <View style={styles.anonMeta}>
-                  <Text style={styles.anonTitle}>Post Anonymously</Text>
-                  <Text style={styles.anonSubtitle}>
-                    Hide your name while keeping university verification
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={isAnonymous}
-                onValueChange={setIsAnonymous}
-                trackColor={{ false: colors.line, true: colors.violet }}
-                thumbColor={colors.surface}
-              />
-            </PopCard>
+            {/* Description */}
+            <Text style={styles.fieldLabel}>DETAILS & INSTRUCTIONS</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Provide special instructions or deadline specifics..."
+              placeholderTextColor={colors.inkFaint}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={3}
+            />
 
             {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
             <PopButton
-              title="Publish Discussion"
+              title="Publish Campus Gig"
               onPress={handleCreate}
               loading={submitting}
-              variant="violet"
+              variant="sun"
               size="lg"
-              icon={<Send size={18} color={colors.surface} />}
+              icon={<Plus size={18} color={colors.ink} />}
               style={styles.submitBtn}
             />
           </ScrollView>
@@ -210,7 +218,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     ...shadows.hardSm
   },
-  formScroll: {
+  body: {
     padding: spacing.containerPadding
   },
   fieldLabel: {
@@ -219,31 +227,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginBottom: 6
   },
-  categoryRow: {
+  catGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
     marginBottom: spacing.lg
   },
   catPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: radii.pill,
     backgroundColor: colors.surface2,
     borderWidth: 1.5,
     borderColor: colors.line
   },
   catPillActive: {
-    backgroundColor: colors.violet,
+    backgroundColor: colors.sun,
     borderColor: colors.borderInk,
     ...shadows.hardSm
   },
   catText: {
     ...typography.badge,
-    color: colors.inkSoft,
-    fontSize: 12
+    fontSize: 11.5,
+    color: colors.inkSoft
   },
   catTextActive: {
-    color: colors.surface
+    color: colors.ink
+  },
+  row: {
+    flexDirection: "row",
+    gap: spacing.md
   },
   input: {
     backgroundColor: colors.surface2,
@@ -251,40 +264,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.borderInk,
     paddingHorizontal: spacing.md,
-    paddingVertical: 11,
+    paddingVertical: 10,
     color: colors.ink,
     fontSize: 14,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     ...shadows.hardSm
   },
   textArea: {
-    minHeight: 90
-  },
-  anonCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: spacing.md,
-    marginBottom: spacing.lg
-  },
-  anonLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginRight: spacing.sm
-  },
-  anonMeta: {
-    marginLeft: spacing.sm,
-    flex: 1
-  },
-  anonTitle: {
-    ...typography.badge,
-    fontSize: 13,
-    color: colors.ink
-  },
-  anonSubtitle: {
-    ...typography.bodySm,
-    fontSize: 10.5
+    minHeight: 80
   },
   errorText: {
     ...typography.bodySm,

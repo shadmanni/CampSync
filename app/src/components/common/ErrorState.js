@@ -1,67 +1,65 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { AlertCircle, RotateCcw } from "lucide-react-native";
 import { colors, radii, spacing, typography } from "../../theme/theme";
-import { PrimaryButton } from "./PrimaryButton";
+import { PopCard } from "./PopCard";
+import { PopButton } from "./PopButton";
 
-export const ErrorState = ({
-  icon,
-  title = "Something went wrong",
-  message = "Failed to load content. Please check your network connection and try again.",
-  onRetry
-}) => {
+export const ErrorState = ({ title = "Something went wrong", message, onRetry }) => {
   return (
-    <View style={styles.container}>
-      {icon && <View style={styles.iconContainer}>{icon}</View>}
+    <PopCard style={styles.card} variant="inset">
+      <View style={styles.iconCircle}>
+        <AlertCircle size={24} color={colors.rose} />
+      </View>
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
+      {message ? <Text style={styles.message}>{message}</Text> : null}
       {onRetry && (
-        <PrimaryButton
+        <PopButton
           title="Try Again"
           onPress={onRetry}
-          variant="outline"
-          style={styles.retryButton}
+          variant="surface"
+          size="sm"
+          icon={<RotateCcw size={14} color={colors.ink} />}
+          style={styles.retryBtn}
         />
       )}
-    </View>
+    </PopCard>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  card: {
     alignItems: "center",
     justifyContent: "center",
     padding: spacing.xl,
-    backgroundColor: "rgba(244, 63, 94, 0.08)",
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: "rgba(244, 63, 94, 0.25)",
-    marginHorizontal: spacing.containerPadding,
-    marginVertical: spacing.lg
+    marginVertical: spacing.lg,
+    borderColor: colors.roseSoft
   },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(244, 63, 94, 0.15)",
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.roseSoft,
+    borderWidth: 1.5,
+    borderColor: colors.borderInk,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md
   },
   title: {
-    ...typography.h3,
-    color: colors.accentRose,
+    ...typography.heading,
+    color: colors.ink,
     textAlign: "center",
-    marginBottom: spacing.sm
+    marginBottom: 4
   },
   message: {
     ...typography.body,
-    color: colors.textMuted,
+    color: colors.inkSoft,
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: spacing.lg
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.md
   },
-  retryButton: {
-    minWidth: 140,
-    borderColor: colors.accentRose
+  retryBtn: {
+    marginTop: spacing.xs
   }
 });

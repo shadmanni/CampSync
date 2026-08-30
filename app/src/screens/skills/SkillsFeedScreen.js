@@ -7,10 +7,6 @@ import {
   TouchableOpacity,
   RefreshControl,
   TextInput,
-  Modal,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Alert
 } from "react-native";
 import {
@@ -19,55 +15,54 @@ import {
   Plus,
   BookOpen,
   User,
-  Check,
-  X,
-  Send,
-  MessageCircle
+  GraduationCap,
+  MessageCircle,
+  Tag
 } from "lucide-react-native";
 import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { skillsService } from "../../services/skillsService";
-import { useAuth } from "../../context/AuthContext";
-import { PopHeader } from "../../components/common/PopHeader";
+import { HeaderBar } from "../../components/common/HeaderBar";
 import { PopCard } from "../../components/common/PopCard";
 import { PopPill } from "../../components/common/PopPill";
 import { PopButton } from "../../components/common/PopButton";
 import { PopAvatar } from "../../components/common/PopAvatar";
+import { SkeletonLoader } from "../../components/common/SkeletonLoader";
+import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
+import { CreateSkillModal } from "./CreateSkillModal";
 
-const SKILL_CATEGORIES = ["All", "Tech & Coding", "Academics", "Design", "Music", "Languages"];
-const TYPE_FILTERS = ["All Listings", "Offering Skill", "Requesting Help"];
+const SKILL_CATEGORIES = [
+  "All",
+  "Tech & Coding",
+  "Academics & Tutoring",
+  "Design & Media",
+  "Music & Arts",
+  "Languages"
+];
 
-export const SkillsFeedScreen = ({ navigation }) => {
-  const { user } = useAuth();
-
+export const SkillsFeedScreen = () => {
   const [skills, setSkills] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedType, setSelectedType] = useState("All Listings");
+  const [typeFilter, setTypeFilter] = useState("ALL"); // 'ALL' | 'OFFER' | 'REQUEST'
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-
-  // Form State
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Tech & Coding");
-  const [type, setType] = useState("OFFER");
-  const [hourlyRate, setHourlyRate] = useState("300");
-  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   const fetchSkills = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     try {
-      const typeParam = selectedType === "Offering Skill" ? "OFFER" : selectedType === "Requesting Help" ? "REQUEST" : "ALL";
-      const data = await skillsService.getSkills(selectedCategory, typeParam, searchQuery);
+      const data = await skillsService.getSkills(selectedCategory, typeFilter, searchQuery);
       setSkills(data || []);
     } catch (err) {
-      console.warn("Failed to load skills:", err.message);
+      setError(err.message || "Failed to load skills directory.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedCategory, selectedType, searchQuery]);
+  }, [selectedCategory, typeFilter, searchQuery]);
 
   useEffect(() => {
     fetchSkills();
@@ -78,33 +73,11 @@ export const SkillsFeedScreen = ({ navigation }) => {
     fetchSkills(true);
   };
 
-  const handleCreateSkill = async () => {
-    if (!title.trim() || !description.trim()) {
-      Alert.alert("Required Fields", "Please enter both skill title and description.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const newSkill = await skillsService.createSkill({
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        type,
-        hourlyRate: Number(hourlyRate) || 0,
-        creatorName: user?.name || "Verified Student"
-      });
-
-      setSkills((prev) => [newSkill, ...prev]);
-      setSubmitting(false);
-      setTitle("");
-      setDescription("");
-      setModalOpen(false);
-      Alert.alert("Success! 🎓", "Your skill listing is now visible to the campus.");
-    } catch (err) {
-      setSubmitting(false);
-      Alert.alert("Error", err.message || "Failed to publish skill.");
-    }
+  const handleContact = (skill) => {
+    Alert.alert(
+      "Connect with Peer",
+      `Reach out to ${skill.authorName} (${skill.department}) via official email:\n\n${skill.contactInfo || "student@college.edu"}`
+    );
   };
 
   const renderSkillCard = ({ item }) => {
@@ -113,29 +86,61 @@ export const SkillsFeedScreen = ({ navigation }) => {
     return (
       <PopCard style={styles.card}>
         <View style={styles.cardTop}>
-          <View style={[styles.typeBadge, !isOffer && styles.typeBadgeRequest]}>
-            <Text style={[styles.typeBadgeText, !isOffer && styles.typeBadgeRequestText]}>
-              {isOffer ? "🎓 OFFERING TUTORING" : "🙋 REQUESTING HELP"}
+          <View
+            style={[
+              styles.typeBadge,
+              { backgroundColor: isOffer ? colors.roseSoft : colors.sunSoft }
+            ]}
+          >
+            {isOffer ? (
+              <GraduationCap size={12} color={colors.rose} />
+            ) : (
+              <BookOpen size={12} color={colors.ink} />
+            )}
+            <Text
+              style={[
+                styles.typeText,
+                { color: isOffer ? colors.rose : colors.ink }
+              ]}
+            >
+              {isOffer ? "TEACHING / OFFER" : "SEEKING HELP"}
             </Text>
           </View>
-          <Text style={styles.rateText}>₹{item.hourlyRate || 250}/hr</Text>
+
+          <View style={styles.rateBadge}>
+            <Text style={styles.rateText}>
+              {item.hourlyRate > 0 ? `₹${item.hourlyRate}/hr` : "Free Exchange"}
+            </Text>
+          </View>
         </View>
 
         <Text style={styles.skillTitle}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
+        <Text style={styles.description} numberOfLines={3}>
+          {item.description}
+        </Text>
+
+        <View style={styles.tagRow}>
+          <View style={styles.categoryChip}>
+            <Tag size={11} color={colors.rose} />
+            <Text style={styles.categoryChipText}>{item.category || "General"}</Text>
+          </View>
+        </View>
 
         <View style={styles.cardFooter}>
-          <View style={styles.tutorRow}>
-            <PopAvatar name={item.creatorName || "Student"} size={32} accentColor={colors.rose} />
-            <Text style={styles.tutorName}>{item.creatorName || "Verified Peer"}</Text>
+          <View style={styles.authorRow}>
+            <PopAvatar name={item.authorName || "Peer"} size={30} />
+            <View style={styles.authorMeta}>
+              <Text style={styles.authorName}>{item.authorName || "Student"}</Text>
+              <Text style={styles.authorDept}>{item.department || "Campus"}</Text>
+            </View>
           </View>
 
           <PopButton
             title="Connect"
-            onPress={() => Alert.alert("Contact Peer", `Reach out to ${item.creatorName || "this student"} for tutoring details.`)}
+            onPress={() => handleContact(item)}
             variant="rose"
             size="sm"
-            icon={<MessageCircle size={13} color="#FFFFFF" />}
+            icon={<MessageCircle size={13} color={colors.surface} />}
           />
         </View>
       </PopCard>
@@ -144,29 +149,46 @@ export const SkillsFeedScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <PopHeader
+      <HeaderBar
         title="CampusSkills"
-        subtitle="Peer Tutoring & Learning"
+        subtitle="Peer Tutoring & Collaborative Skill Directory"
         accentColor={colors.rose}
-        onProfilePress={() => navigation.navigate("Profile")}
+        onNotificationPress={() => {}}
       />
 
       {/* Search Input */}
-      <View style={styles.searchRow}>
-        <View style={styles.searchInputWrapper}>
-          <Search size={16} color={colors.inkFaint} style={{ marginRight: 8 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search skills, tutors, languages..."
-            placeholderTextColor={colors.inkFaint}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+      <View style={styles.searchBox}>
+        <Search size={16} color={colors.inkFaint} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search subjects, coding languages, design..."
+          placeholderTextColor={colors.inkFaint}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
       </View>
 
-      {/* Category Pills */}
-      <View style={styles.categoryContainer}>
+      {/* Offer vs Request Filter Pills */}
+      <View style={styles.filterRow}>
+        {[
+          { id: "ALL", label: "All Skills" },
+          { id: "OFFER", label: "🎓 Offering" },
+          { id: "REQUEST", label: "🙋 Seeking" }
+        ].map((f) => (
+          <TouchableOpacity
+            key={f.id}
+            style={[styles.filterChip, typeFilter === f.id && styles.filterChipActive]}
+            onPress={() => setTypeFilter(f.id)}
+          >
+            <Text style={[styles.filterText, typeFilter === f.id && styles.filterTextActive]}>
+              {f.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Categories */}
+      <View style={styles.categoryRow}>
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -177,118 +199,66 @@ export const SkillsFeedScreen = ({ navigation }) => {
               label={item}
               active={selectedCategory === item}
               accentColor={colors.rose}
-              accentSoft={colors.roseSoft}
+              accentSoftColor={colors.roseSoft}
               onPress={() => setSelectedCategory(item)}
             />
           )}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          contentContainerStyle={styles.categoryList}
         />
       </View>
 
       {/* Skills List */}
-      <FlatList
-        data={skills}
-        keyExtractor={(item) => item.id}
-        renderItem={renderSkillCard}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.rose}
-            colors={[colors.rose]}
-          />
-        }
-      />
+      {loading && !refreshing ? (
+        <SkeletonLoader count={3} />
+      ) : error ? (
+        <ErrorState
+          title="Could not load skills"
+          message={error}
+          onRetry={() => fetchSkills()}
+        />
+      ) : (
+        <FlatList
+          data={skills}
+          keyExtractor={(item) => item.id}
+          renderItem={renderSkillCard}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.rose}
+              colors={[colors.rose]}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon={<Sparkles size={32} color={colors.rose} />}
+              title="No skills listed yet"
+              description="Offer a tutoring session or request peer study help!"
+              actionTitle="List a Skill"
+              onAction={() => setCreateModalVisible(true)}
+              accentVariant="rose"
+            />
+          }
+        />
+      )}
 
-      {/* FAB */}
+      {/* Floating Plus */}
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.85}
-        onPress={() => setModalOpen(true)}
+        onPress={() => setCreateModalVisible(true)}
       >
-        <Plus size={26} color="#FFFFFF" strokeWidth={2.5} />
+        <Plus size={24} color={colors.surface} />
       </TouchableOpacity>
 
-      {/* Create Skill Modal */}
-      <Modal visible={modalOpen} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Share or Request Skill</Text>
-              <TouchableOpacity onPress={() => setModalOpen(false)} style={styles.modalClose}>
-                <X size={18} color={colors.ink} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
-              <Text style={styles.label}>LISTING TYPE</Text>
-              <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
-                <TouchableOpacity
-                  style={[styles.typeOption, type === "OFFER" && styles.typeOptionActive]}
-                  onPress={() => setType("OFFER")}
-                >
-                  <Text style={[styles.typeOptionText, type === "OFFER" && styles.typeOptionTextActive]}>
-                    🎓 Offering Tutoring
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.typeOption, type === "REQUEST" && styles.typeOptionActive]}
-                  onPress={() => setType("REQUEST")}
-                >
-                  <Text style={[styles.typeOptionText, type === "REQUEST" && styles.typeOptionTextActive]}>
-                    🙋 Requesting Help
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.label}>SKILL TITLE</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Python, React & Data Structures Tutoring"
-                placeholderTextColor={colors.inkFaint}
-                value={title}
-                onChangeText={setTitle}
-              />
-
-              <Text style={styles.label}>DESCRIPTION</Text>
-              <TextInput
-                style={[styles.input, { minHeight: 90 }]}
-                placeholder="Share your experience, syllabus covered, or what help you need..."
-                placeholderTextColor={colors.inkFaint}
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-
-              <Text style={styles.label}>HOURLY RATE (₹/HR)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 300"
-                placeholderTextColor={colors.inkFaint}
-                value={hourlyRate}
-                onChangeText={setHourlyRate}
-                keyboardType="numeric"
-              />
-
-              <PopButton
-                title="Publish Skill"
-                onPress={handleCreateSkill}
-                loading={submitting}
-                variant="rose"
-                size="lg"
-                icon={<Send size={16} color="#FFFFFF" />}
-                style={{ marginTop: 8, marginBottom: 20 }}
-              />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <CreateSkillModal
+        visible={createModalVisible}
+        onClose={() => setCreateModalVisible(false)}
+        onCreated={(newSkill) => {
+          setSkills((prev) => [newSkill, ...prev]);
+        }}
+      />
     </View>
   );
 };
@@ -298,76 +268,127 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.canvas
   },
-  searchRow: {
-    paddingHorizontal: 16,
-    paddingTop: 12
-  },
-  searchInputWrapper: {
+  searchBox: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.surface,
     borderRadius: radii.md,
     borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 12,
+    borderColor: colors.borderInk,
+    marginHorizontal: spacing.containerPadding,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.md,
     height: 44,
     ...shadows.hardSm
+  },
+  searchIcon: {
+    marginRight: spacing.sm
   },
   searchInput: {
     flex: 1,
     color: colors.ink,
     fontSize: 14,
-    fontWeight: "600"
+    fontWeight: "500"
   },
-  categoryContainer: {
-    paddingVertical: 12
+  filterRow: {
+    flexDirection: "row",
+    paddingHorizontal: spacing.containerPadding,
+    gap: spacing.sm,
+    marginTop: spacing.sm
+  },
+  filterChip: {
+    flex: 1,
+    backgroundColor: colors.surface2,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    paddingVertical: 7,
+    borderRadius: radii.md,
+    alignItems: "center"
+  },
+  filterChipActive: {
+    backgroundColor: colors.rose,
+    borderColor: colors.borderInk,
+    ...shadows.hardSm
+  },
+  filterText: {
+    ...typography.badge,
+    fontSize: 11.5,
+    color: colors.inkSoft
+  },
+  filterTextActive: {
+    color: colors.surface
+  },
+  categoryRow: {
+    paddingVertical: spacing.sm
+  },
+  categoryList: {
+    paddingHorizontal: spacing.containerPadding
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100
+    paddingHorizontal: spacing.containerPadding,
+    paddingBottom: 90
   },
   card: {
-    marginBottom: 14
+    marginBottom: spacing.md
   },
   cardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8
+    marginBottom: spacing.sm
   },
   typeBadge: {
-    backgroundColor: colors.roseSoft,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderColor: colors.borderInk,
+    paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: radii.full
+    borderRadius: radii.pill
   },
-  typeBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: colors.rose
+  typeText: {
+    ...typography.badge,
+    fontSize: 10.5
   },
-  typeBadgeRequest: {
-    backgroundColor: colors.violetSoft
-  },
-  typeBadgeRequestText: {
-    color: colors.violet
+  rateBadge: {
+    backgroundColor: colors.surface2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.sm
   },
   rateText: {
-    ...typography.label,
-    fontSize: 14,
-    color: colors.rose
+    ...typography.badge,
+    color: colors.ink,
+    fontSize: 12
   },
   skillTitle: {
-    ...typography.h3,
-    fontSize: 17,
+    ...typography.heading,
+    fontSize: 16.5,
     marginBottom: 4
   },
   description: {
     ...typography.body,
-    lineHeight: 20,
-    marginBottom: 12
+    marginBottom: spacing.sm
+  },
+  tagRow: {
+    flexDirection: "row",
+    marginBottom: spacing.md
+  },
+  categoryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.surface2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.pill
+  },
+  categoryChipText: {
+    ...typography.caption,
+    fontSize: 10.5,
+    color: colors.inkSoft
   },
   cardFooter: {
     flexDirection: "row",
@@ -375,110 +396,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopWidth: 1.5,
     borderTopColor: colors.line,
-    paddingTop: 10
+    paddingTop: spacing.sm
   },
-  tutorRow: {
+  authorRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
+    gap: spacing.xs
   },
-  tutorName: {
+  authorMeta: {
+    justifyContent: "center"
+  },
+  authorName: {
+    ...typography.badge,
+    fontSize: 12.5,
+    color: colors.ink
+  },
+  authorDept: {
     ...typography.bodySm,
-    color: colors.ink,
-    fontWeight: "700"
+    fontSize: 10.5
   },
   fab: {
     position: "absolute",
-    bottom: 24,
-    right: 20,
+    bottom: 22,
+    right: 18,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: radii.md,
     backgroundColor: colors.rose,
+    borderWidth: 2,
+    borderColor: colors.borderInk,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.lineStrong,
-    ...shadows.hard,
-    elevation: 6
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(23, 21, 15, 0.5)",
-    justifyContent: "flex-end"
-  },
-  modalSheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    borderWidth: 2,
-    borderBottomWidth: 0,
-    borderColor: colors.lineStrong,
-    maxHeight: "88%",
-    paddingBottom: 20,
-    ...shadows.hardLg
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.lineStrong
-  },
-  modalTitle: {
-    ...typography.h3,
-    fontSize: 18
-  },
-  modalClose: {
-    width: 34,
-    height: 34,
-    borderRadius: radii.full,
-    backgroundColor: colors.canvas,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  label: {
-    ...typography.label,
-    fontSize: 11,
-    color: colors.inkFaint,
-    letterSpacing: 0.5,
-    marginBottom: 8
-  },
-  typeOption: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.surfaceInset,
-    alignItems: "center",
-    ...shadows.hardSm
-  },
-  typeOptionActive: {
-    backgroundColor: colors.rose
-  },
-  typeOptionText: {
-    ...typography.label,
-    fontSize: 12,
-    color: colors.ink
-  },
-  typeOptionTextActive: {
-    color: "#FFFFFF"
-  },
-  input: {
-    backgroundColor: colors.surfaceInset,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "600",
-    marginBottom: 16
+    ...shadows.hard
   }
 });
