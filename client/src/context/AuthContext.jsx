@@ -1,38 +1,71 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("campussync_user");
-    return saved ? JSON.parse(saved) : {
-      id: "u-demo",
-      email: "alex.tech@college.edu",
-      name: "Alex Rivera",
-      department: "Computer Science",
-      hostel: "Block B",
-      isVerified: true
-    };
-  });
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+const USER_KEY = 'campussync_user';
+const TOKEN_KEY = 'campussync_token';
 
-  const login = (userData, token) => {
+function readStoredUser() {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Campus verification state.
+ *
+ * Note this starts signed *out* rather than seeding a fake logged-in student.
+ * The college-email + OTP flow is the trust layer the whole product rests on,
+ * so it should be walked through on stage, not skipped past.
+ */
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(readStoredUser);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  const login = useCallback((userData, token) => {
     setUser(userData);
-    localStorage.setItem("campussync_user", JSON.stringify(userData));
-    localStorage.setItem("campussync_token", token);
-  };
+    try {
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      if (token) localStorage.setItem(TOKEN_KEY, token);
+    } catch {
+      /* Storage unavailable — the session still works until reload. */
+    }
+    setAuthOpen(false);
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem("campussync_user");
-    localStorage.removeItem("campussync_token");
-  };
+    try {
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+    } catch {
+      /* no-op */
+    }
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthModalOpen, setIsAuthModalOpen }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      isVerified: Boolean(user?.isVerified),
+      login,
+      logout,
+      authOpen,
+      openAuth: () => setAuthOpen(true),
+      closeAuth: () => setAuthOpen(false),
+      /** Display name used when posting, bidding or joining a ride. */
+      displayName: user?.name || 'Verified Student',
+    }),
+    [user, authOpen, login, logout],
   );
-};
 
-export const useAuth = () => useContext(AuthContext);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  return ctx;
+};
