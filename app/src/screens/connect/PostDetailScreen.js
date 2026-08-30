@@ -15,13 +15,13 @@ import {
   MessageSquare,
   Send,
   User,
-  Shield
+  Shield,
+  Share2
 } from "lucide-react-native";
 import { colors, radii, spacing, typography } from "../../theme/theme";
 import { connectService } from "../../services/connectService";
 import { useAuth } from "../../context/AuthContext";
 import { GlassCard } from "../../components/common/GlassCard";
-import { StatusBadge } from "../../components/common/StatusBadge";
 
 export const PostDetailScreen = ({ route, navigation }) => {
   const { post: initialPost } = route.params;
@@ -75,7 +75,7 @@ export const PostDetailScreen = ({ route, navigation }) => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <ArrowLeft size={20} color={colors.textMain} />
+          <ArrowLeft size={20} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Discussion Thread</Text>
         <View style={{ width: 40 }} />
@@ -87,9 +87,11 @@ export const PostDetailScreen = ({ route, navigation }) => {
           <View style={styles.authorRow}>
             <View style={[styles.avatar, post.isAnonymous && styles.avatarAnon]}>
               {post.isAnonymous ? (
-                <Shield size={18} color={colors.textMuted} />
+                <Shield size={18} color={colors.textSubtle} />
               ) : (
-                <User size={18} color={colors.primaryLight} />
+                <Text style={styles.avatarLetter}>
+                  {(post.authorName || "S").charAt(0).toUpperCase()}
+                </Text>
               )}
             </View>
             <View style={styles.authorMeta}>
@@ -98,11 +100,9 @@ export const PostDetailScreen = ({ route, navigation }) => {
               </Text>
               <Text style={styles.timeText}>{post.createdAt || "Recently"}</Text>
             </View>
-            <StatusBadge
-              label={post.category || "General"}
-              variant="primary"
-              dot={false}
-            />
+            <View style={styles.categoryTag}>
+              <Text style={styles.categoryTagText}>{post.category || "General"}</Text>
+            </View>
           </View>
 
           <Text style={styles.postTitle}>{post.title}</Text>
@@ -114,34 +114,34 @@ export const PostDetailScreen = ({ route, navigation }) => {
               onPress={handleUpvote}
               activeOpacity={0.7}
             >
-              <ThumbsUp size={16} color={colors.primaryLight} />
+              <ThumbsUp size={16} color={colors.primary} />
               <Text style={styles.upvoteText}>{post.upvotes || 0} upvotes</Text>
             </TouchableOpacity>
 
             <View style={styles.commentsCountRow}>
-              <MessageSquare size={16} color={colors.textMuted} />
+              <MessageSquare size={16} color={colors.textSubtle} />
               <Text style={styles.commentsCountText}>{comments.length} replies</Text>
             </View>
           </View>
         </GlassCard>
 
-        {/* Discussion Section Title */}
+        {/* Section Title */}
         <Text style={styles.sectionTitle}>Responses ({comments.length})</Text>
 
         {/* Comments List */}
         {comments.length === 0 ? (
           <GlassCard style={styles.emptyComments}>
             <Text style={styles.emptyCommentsText}>
-              No replies yet. Be the first to join the discussion!
+              No replies yet. Be the first to join the conversation!
             </Text>
           </GlassCard>
         ) : (
           comments.map((c, idx) => (
-            <GlassCard key={c.id || idx} style={styles.commentCard} variant="surface">
+            <GlassCard key={c.id || idx} style={styles.commentCard}>
               <View style={styles.commentHeader}>
                 <View style={styles.commentAvatar}>
-                  <Text style={styles.avatarLetter}>
-                    {c.authorName ? c.authorName.charAt(0).toUpperCase() : "S"}
+                  <Text style={styles.commentAvatarLetter}>
+                    {(c.authorName || "S").charAt(0).toUpperCase()}
                   </Text>
                 </View>
                 <View style={styles.commentMeta}>
@@ -159,7 +159,7 @@ export const PostDetailScreen = ({ route, navigation }) => {
       <View style={styles.composerContainer}>
         <TextInput
           style={styles.composerInput}
-          placeholder="Share your thoughts or answer..."
+          placeholder="Write a reply or answer..."
           placeholderTextColor={colors.textSubtle}
           value={newComment}
           onChangeText={setNewComment}
@@ -171,7 +171,7 @@ export const PostDetailScreen = ({ route, navigation }) => {
           disabled={!newComment.trim() || submitting}
           activeOpacity={0.7}
         >
-          <Send size={18} color={colors.textMain} />
+          <Send size={18} color={colors.textInverse} />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -188,8 +188,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.containerPadding,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.bgPrimary,
+    paddingTop: 50,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.bgSurface,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderGlass
   },
@@ -197,15 +198,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.bgGlass,
-    borderWidth: 1,
-    borderColor: colors.borderGlass,
+    backgroundColor: colors.bgDim,
     alignItems: "center",
     justifyContent: "center"
   },
   headerTitle: {
     ...typography.h3,
-    fontSize: 17
+    color: colors.primary
   },
   scrollContent: {
     padding: spacing.containerPadding,
@@ -221,37 +220,56 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(99, 102, 241, 0.2)",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.bgDim,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.sm
   },
   avatarAnon: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)"
+    backgroundColor: colors.bgSubtle
+  },
+  avatarLetter: {
+    color: colors.primary,
+    fontWeight: "700",
+    fontSize: 16
   },
   authorMeta: {
     flex: 1
   },
   authorName: {
     ...typography.label,
-    fontSize: 14
+    fontSize: 15,
+    color: colors.textPrimary
   },
   timeText: {
     ...typography.bodySm,
     color: colors.textSubtle,
     fontSize: 11
   },
+  categoryTag: {
+    backgroundColor: colors.bgDim,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.full
+  },
+  categoryTagText: {
+    ...typography.bodySm,
+    color: colors.primary,
+    fontWeight: "700",
+    fontSize: 11
+  },
   postTitle: {
     ...typography.h2,
-    fontSize: 19,
+    fontSize: 20,
+    color: colors.textPrimary,
     marginBottom: spacing.sm
   },
   postBody: {
     ...typography.bodyLg,
-    color: colors.textMain,
+    color: colors.textPrimary,
     lineHeight: 24,
     marginBottom: spacing.lg
   },
@@ -266,11 +284,15 @@ const styles = StyleSheet.create({
   upvoteBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6
+    gap: 6,
+    backgroundColor: colors.bgDim,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.full
   },
   upvoteText: {
     ...typography.bodySm,
-    color: colors.primaryLight,
+    color: colors.primary,
     fontWeight: "700"
   },
   commentsCountRow: {
@@ -280,13 +302,13 @@ const styles = StyleSheet.create({
   },
   commentsCountText: {
     ...typography.bodySm,
-    color: colors.textMuted
+    color: colors.textSubtle
   },
   sectionTitle: {
     ...typography.label,
     fontSize: 15,
     marginBottom: spacing.md,
-    color: colors.textMuted
+    color: colors.primary
   },
   emptyComments: {
     padding: spacing.lg,
@@ -314,8 +336,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: spacing.sm
   },
-  avatarLetter: {
-    color: colors.textMain,
+  commentAvatarLetter: {
+    color: colors.textInverse,
     fontSize: 12,
     fontWeight: "700"
   },
@@ -324,7 +346,8 @@ const styles = StyleSheet.create({
   },
   commentAuthor: {
     ...typography.label,
-    fontSize: 12
+    fontSize: 13,
+    color: colors.textPrimary
   },
   commentTime: {
     ...typography.bodySm,
@@ -333,7 +356,7 @@ const styles = StyleSheet.create({
   },
   commentBody: {
     ...typography.body,
-    color: colors.textMain,
+    color: colors.textPrimary,
     lineHeight: 20
   },
   composerContainer: {
@@ -347,21 +370,21 @@ const styles = StyleSheet.create({
   },
   composerInput: {
     flex: 1,
-    backgroundColor: colors.bgGlass,
-    borderRadius: radii.lg,
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radii.full,
     borderWidth: 1,
     borderColor: colors.borderGlass,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
-    color: colors.textMain,
+    color: colors.textPrimary,
     maxHeight: 90,
     fontSize: 14
   },
   sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.secondary, // Warm Orange #FF6F3C
     alignItems: "center",
     justifyContent: "center",
     marginLeft: spacing.sm

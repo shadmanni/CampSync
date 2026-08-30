@@ -21,7 +21,7 @@ export const ProfileScreen = () => {
               {user?.name ? user.name.charAt(0).toUpperCase() : "S"}
             </Text>
           </View>
-          <Text style={styles.userName}>{user?.name || "Verified Student"}</Text>
+          <Text style={styles.userName}>{user?.name || "Alex Rivera"}</Text>
           <View style={styles.verifiedTag}>
             <ShieldCheck size={14} color={colors.accentEmerald} />
             <Text style={styles.verifiedText}>Verified Student Member</Text>
@@ -31,7 +31,9 @@ export const ProfileScreen = () => {
         {/* Profile Info Items */}
         <GlassCard style={styles.infoCard}>
           <View style={styles.infoRow}>
-            <Mail size={18} color={colors.primaryLight} />
+            <View style={styles.infoIconBg}>
+              <Mail size={18} color={colors.primary} />
+            </View>
             <View style={styles.infoMeta}>
               <Text style={styles.infoLabel}>COLLEGE EMAIL</Text>
               <Text style={styles.infoValue}>{user?.email || "alex.tech@college.edu"}</Text>
@@ -41,7 +43,9 @@ export const ProfileScreen = () => {
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
-            <Building size={18} color={colors.primaryLight} />
+            <View style={styles.infoIconBg}>
+              <Building size={18} color={colors.primary} />
+            </View>
             <View style={styles.infoMeta}>
               <Text style={styles.infoLabel}>DEPARTMENT</Text>
               <Text style={styles.infoValue}>{user?.department || "Computer Science"}</Text>
@@ -51,7 +55,9 @@ export const ProfileScreen = () => {
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
-            <MapPin size={18} color={colors.primaryLight} />
+            <View style={styles.infoIconBg}>
+              <MapPin size={18} color={colors.primary} />
+            </View>
             <View style={styles.infoMeta}>
               <Text style={styles.infoLabel}>HOSTEL RESIDENCE</Text>
               <Text style={styles.infoValue}>{user?.hostel || "Hostel Block A"}</Text>
@@ -64,7 +70,7 @@ export const ProfileScreen = () => {
           title="Sign Out of Campus"
           onPress={logout}
           variant="outline"
-          icon={<LogOut size={18} color={colors.primaryLight} />}
+          icon={<LogOut size={18} color={colors.primary} />}
           style={styles.logoutBtn}
         />
       </ScrollView>
@@ -79,7 +85,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.containerPadding,
-    paddingBottom: 80
+    paddingBottom: 90
   },
   userCard: {
     alignItems: "center",
@@ -87,31 +93,36 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg
   },
   avatarCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.borderHighlight
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4
   },
   avatarLetter: {
     ...typography.h1,
-    fontSize: 28
+    color: colors.textInverse,
+    fontSize: 32
   },
   userName: {
     ...typography.h2,
-    fontSize: 20,
+    color: colors.primary,
+    fontSize: 22,
     marginBottom: 6
   },
   verifiedTag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
-    paddingHorizontal: 12,
+    backgroundColor: colors.accentEmeraldLight,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: radii.full
   },
@@ -130,6 +141,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md
   },
+  infoIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.bgDim,
+    alignItems: "center",
+    justifyContent: "center"
+  },
   infoMeta: {
     flex: 1
   },
@@ -143,7 +162,7 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     ...typography.body,
-    color: colors.textMain,
+    color: colors.textPrimary,
     fontWeight: "600"
   },
   divider: {
@@ -152,6 +171,6 @@ const styles = StyleSheet.create({
     marginVertical: spacing.md
   },
   logoutBtn: {
-    borderColor: colors.borderGlass
+    borderColor: colors.borderHighlight
   }
 });

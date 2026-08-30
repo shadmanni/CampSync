@@ -5,7 +5,7 @@ import { colors, radii, spacing, typography } from "../../theme/theme";
 export const CategoryPill = ({ label, active = false, onPress, count }) => {
   return (
     <TouchableOpacity
-      activeOpacity={0.7}
+      activeOpacity={0.75}
       onPress={onPress}
       style={[styles.pill, active && styles.pillActive]}
     >
@@ -19,41 +19,39 @@ export const CategoryPill = ({ label, active = false, onPress, count }) => {
 
 const styles = StyleSheet.create({
   pill: {
-    backgroundColor: colors.bgGlass,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: colors.bgDim,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: radii.full,
-    borderWidth: 1,
-    borderColor: colors.borderGlass,
     marginRight: spacing.sm,
     flexDirection: "row",
     alignItems: "center"
   },
   pillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.borderHighlight,
+    backgroundColor: colors.primary, // Deep Indigo
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     elevation: 3
   },
   text: {
     ...typography.bodySm,
-    color: colors.textMuted,
-    fontWeight: "500"
+    color: colors.primary,
+    fontWeight: "600",
+    fontSize: 13
   },
   textActive: {
-    color: colors.textMain,
+    color: colors.textInverse,
     fontWeight: "700"
   },
   count: {
     ...typography.bodySm,
     fontSize: 11,
-    color: colors.textSubtle,
+    color: colors.primaryLight,
     marginLeft: 6
   },
   countActive: {
-    color: colors.textMain
+    color: colors.textInverse
   }
 });

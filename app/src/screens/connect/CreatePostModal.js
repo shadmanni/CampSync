@@ -36,7 +36,7 @@ export const CreatePostModal = ({ visible, onClose, onCreated }) => {
       return;
     }
     if (!content.trim()) {
-      setErrorMsg("Please enter the discussion content.");
+      setErrorMsg("Please enter the discussion details.");
       return;
     }
 
@@ -78,13 +78,13 @@ export const CreatePostModal = ({ visible, onClose, onCreated }) => {
           <View style={styles.header}>
             <Text style={styles.headerTitle}>New Discussion</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <X size={20} color={colors.textMuted} />
+              <X size={20} color={colors.textSubtle} />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.formScroll} keyboardShouldPersistTaps="handled">
             {/* Category Selector */}
-            <Text style={styles.fieldLabel}>CATEGORY</Text>
+            <Text style={styles.fieldLabel}>SELECT CATEGORY</Text>
             <View style={styles.categoryRow}>
               {CATEGORIES.map((cat) => (
                 <TouchableOpacity
@@ -112,41 +112,41 @@ export const CreatePostModal = ({ visible, onClose, onCreated }) => {
             <Text style={styles.fieldLabel}>TITLE</Text>
             <TextInput
               style={styles.titleInput}
-              placeholder="e.g. Midterm study group for Algorithms?"
+              placeholder="e.g. Study group for finals?"
               placeholderTextColor={colors.textSubtle}
               value={title}
               onChangeText={setTitle}
             />
 
             {/* Content Input */}
-            <Text style={styles.fieldLabel}>DETAILS & QUESTIONS</Text>
+            <Text style={styles.fieldLabel}>DETAILS</Text>
             <TextInput
               style={styles.contentInput}
-              placeholder="Share background context, question specifics, or venue notes..."
+              placeholder="Share background, question specifics, or venue notes..."
               placeholderTextColor={colors.textSubtle}
               value={content}
               onChangeText={setContent}
               multiline
-              numberOfLines={5}
+              numberOfLines={4}
               textAlignVertical="top"
             />
 
             {/* Anonymous Toggle */}
             <View style={styles.anonToggleRow}>
               <View style={styles.anonLeft}>
-                <Shield size={18} color={isAnonymous ? colors.accentCyan : colors.textMuted} />
+                <Shield size={20} color={isAnonymous ? colors.secondary : colors.textSubtle} />
                 <View style={styles.anonMeta}>
                   <Text style={styles.anonTitle}>Post Anonymously</Text>
                   <Text style={styles.anonSubtitle}>
-                    Hide your name while keeping campus verification
+                    Hide your name while keeping university verification
                   </Text>
                 </View>
               </View>
               <Switch
                 value={isAnonymous}
                 onValueChange={setIsAnonymous}
-                trackColor={{ false: colors.bgSurface, true: colors.primary }}
-                thumbColor={colors.textMain}
+                trackColor={{ false: colors.bgSubtle, true: colors.secondary }}
+                thumbColor={colors.bgSurface}
               />
             </View>
 
@@ -157,7 +157,7 @@ export const CreatePostModal = ({ visible, onClose, onCreated }) => {
               title="Publish to Campus"
               onPress={handleCreate}
               loading={submitting}
-              icon={<Send size={18} color={colors.textMain} />}
+              icon={<Send size={18} color={colors.textInverse} />}
               style={styles.submitBtn}
             />
           </ScrollView>
@@ -170,17 +170,20 @@ export const CreatePostModal = ({ visible, onClose, onCreated }) => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    backgroundColor: "rgba(24, 0, 82, 0.45)",
     justifyContent: "flex-end"
   },
   modalContent: {
-    backgroundColor: colors.bgSurfaceSolid,
+    backgroundColor: colors.bgSurface,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: colors.borderGlass,
+    paddingBottom: spacing.xl,
     maxHeight: "88%",
-    paddingBottom: spacing.xl
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8
   },
   header: {
     flexDirection: "row",
@@ -193,13 +196,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...typography.h3,
+    color: colors.primary,
     fontSize: 18
   },
   closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.bgGlass,
+    backgroundColor: colors.bgDim,
     alignItems: "center",
     justifyContent: "center"
   },
@@ -220,58 +224,54 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg
   },
   catPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: radii.full,
-    backgroundColor: colors.bgGlass,
-    borderWidth: 1,
-    borderColor: colors.borderGlass
+    backgroundColor: colors.bgDim
   },
   catPillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.borderHighlight
+    backgroundColor: colors.primary
   },
   catText: {
     ...typography.bodySm,
-    color: colors.textMuted
+    color: colors.primary,
+    fontWeight: "600"
   },
   catTextActive: {
-    color: colors.textMain,
+    color: colors.textInverse,
     fontWeight: "700"
   },
   titleInput: {
-    backgroundColor: colors.bgGlass,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.borderGlass,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    color: colors.textMain,
+    color: colors.textPrimary,
     ...typography.bodyLg,
     fontSize: 15,
     marginBottom: spacing.lg
   },
   contentInput: {
-    backgroundColor: colors.bgGlass,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.borderGlass,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    color: colors.textMain,
+    color: colors.textPrimary,
     ...typography.body,
     fontSize: 14,
-    minHeight: 110,
+    minHeight: 100,
     marginBottom: spacing.lg
   },
   anonToggleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: colors.bgGlass,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.borderGlass,
+    backgroundColor: colors.bgDim,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginBottom: spacing.lg
   },
@@ -287,7 +287,8 @@ const styles = StyleSheet.create({
   },
   anonTitle: {
     ...typography.label,
-    fontSize: 14
+    fontSize: 14,
+    color: colors.primary
   },
   anonSubtitle: {
     ...typography.bodySm,
@@ -297,9 +298,10 @@ const styles = StyleSheet.create({
   errorText: {
     ...typography.bodySm,
     color: colors.accentRose,
-    marginBottom: spacing.md
+    marginBottom: spacing.md,
+    fontWeight: "600"
   },
   submitBtn: {
-    marginBottom: spacing.xxl
+    marginBottom: spacing.xl
   }
 });

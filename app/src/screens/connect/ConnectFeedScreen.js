@@ -16,7 +16,7 @@ import {
   User,
   Shield,
   Sparkles,
-  Layers
+  Share2
 } from "lucide-react-native";
 import { colors, radii, spacing, typography } from "../../theme/theme";
 import { connectService } from "../../services/connectService";
@@ -24,17 +24,16 @@ import { socketService } from "../../services/socketService";
 import { HeaderBar } from "../../components/common/HeaderBar";
 import { GlassCard } from "../../components/common/GlassCard";
 import { CategoryPill } from "../../components/common/CategoryPill";
-import { StatusBadge } from "../../components/common/StatusBadge";
 import { SkeletonLoader } from "../../components/common/SkeletonLoader";
 import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorState } from "../../components/common/ErrorState";
 import { CreatePostModal } from "./CreatePostModal";
 
-const CATEGORIES = ["All", "Academic", "General", "Lost & Found"];
+const CATEGORIES = ["All Topics", "Academic", "General", "Lost & Found"];
 
 export const ConnectFeedScreen = ({ navigation }) => {
   const [posts, setPosts] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All Topics");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,10 +45,11 @@ export const ConnectFeedScreen = ({ navigation }) => {
     if (!isRefresh) setLoading(true);
     setError(null);
     try {
-      const data = await connectService.getPosts(selectedCategory, searchQuery);
+      const categoryParam = selectedCategory === "All Topics" ? "All" : selectedCategory;
+      const data = await connectService.getPosts(categoryParam, searchQuery);
       setPosts(data || []);
     } catch (err) {
-      setError(err.message || "Failed to load posts.");
+      setError(err.message || "Failed to load discussions.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -64,12 +64,10 @@ export const ConnectFeedScreen = ({ navigation }) => {
   useEffect(() => {
     const handleNewPost = (newPost) => {
       setPosts((prevPosts) => {
-        // Prevent duplicate addition
         if (prevPosts.some((p) => p.id === newPost.id)) return prevPosts;
 
-        // Check if category matches currently selected filter
         if (
-          selectedCategory !== "All" &&
+          selectedCategory !== "All Topics" &&
           selectedCategory.toLowerCase() !== newPost.category?.toLowerCase()
         ) {
           return prevPosts;
@@ -90,11 +88,11 @@ export const ConnectFeedScreen = ({ navigation }) => {
     fetchPosts(true);
   };
 
-  // Optimistic Upvote with Rollback on Error (Requirement 5)
+  // Optimistic Upvote with Rollback on Error
   const handleUpvote = async (postId) => {
     const originalPosts = [...posts];
 
-    // 1. Optimistic local update
+    // 1. Optimistic update
     setPosts((prevPosts) =>
       prevPosts.map((p) =>
         p.id === postId ? { ...p, upvotes: (p.upvotes || 0) + 1 } : p
@@ -103,14 +101,12 @@ export const ConnectFeedScreen = ({ navigation }) => {
 
     try {
       const result = await connectService.upvotePost(postId);
-      // Synchronize with verified backend score
       setPosts((prevPosts) =>
         prevPosts.map((p) =>
           p.id === postId ? { ...p, upvotes: result.upvotes } : p
         )
       );
     } catch (err) {
-      // 2. Rollback on failure
       setPosts(originalPosts);
       console.warn("[Connect] Upvote failed, state rolled back:", err.message);
     }
@@ -127,51 +123,59 @@ export const ConnectFeedScreen = ({ navigation }) => {
         onPress={() => navigation.navigate("PostDetail", { post: item })}
       >
         <GlassCard style={styles.postCard}>
-          {/* Post Header */}
+          {/* Header Row */}
           <View style={styles.cardHeader}>
             <View style={styles.authorRow}>
               <View style={[styles.avatar, isAnonymous && styles.avatarAnon]}>
                 {isAnonymous ? (
-                  <Shield size={16} color={colors.textMuted} />
+                  <Shield size={16} color={colors.textSubtle} />
                 ) : (
-                  <User size={16} color={colors.primaryLight} />
+                  <Text style={styles.avatarLetter}>
+                    {authorName.charAt(0).toUpperCase()}
+                  </Text>
                 )}
               </View>
               <View style={styles.authorMeta}>
-                <Text style={styles.authorName}>
-                  {authorName}
-                </Text>
+                <Text style={styles.authorName}>{authorName}</Text>
                 <Text style={styles.postTime}>{item.createdAt || "Recently"}</Text>
               </View>
             </View>
 
-            <StatusBadge
-              label={item.category || "General"}
-              variant={item.category === "Academic" ? "primary" : item.category === "Lost & Found" ? "amber" : "cyan"}
-              dot={false}
-            />
+            <View style={[
+              styles.categoryTag,
+              item.category === "Academic" && styles.catAcademic,
+              item.category === "Lost & Found" && styles.catLost
+            ]}>
+              <Text style={[
+                styles.categoryTagText,
+                item.category === "Academic" && styles.catAcademicText,
+                item.category === "Lost & Found" && styles.catLostText
+              ]}>
+                {item.category || "General"}
+              </Text>
+            </View>
           </View>
 
-          {/* Post Content */}
+          {/* Title & Body */}
           <Text style={styles.postTitle}>{item.title}</Text>
           <Text style={styles.postContent} numberOfLines={3}>
             {item.content}
           </Text>
 
-          {/* Actions & Counters */}
+          {/* Card Footer Actions */}
           <View style={styles.cardFooter}>
             <TouchableOpacity
-              style={styles.actionBtn}
+              style={styles.upvoteButton}
               onPress={() => handleUpvote(item.id)}
               activeOpacity={0.7}
             >
-              <ThumbsUp size={15} color={colors.primaryLight} />
-              <Text style={styles.actionCount}>{item.upvotes || 0}</Text>
+              <ThumbsUp size={15} color={colors.primary} />
+              <Text style={styles.upvoteCount}>{item.upvotes || 0}</Text>
             </TouchableOpacity>
 
-            <View style={styles.actionBtn}>
-              <MessageSquare size={15} color={colors.textMuted} />
-              <Text style={styles.actionText}>{commentsCount} comments</Text>
+            <View style={styles.replyButton}>
+              <MessageSquare size={15} color={colors.textSubtle} />
+              <Text style={styles.replyText}>{commentsCount} replies</Text>
             </View>
           </View>
         </GlassCard>
@@ -189,7 +193,7 @@ export const ConnectFeedScreen = ({ navigation }) => {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Search size={16} color={colors.textSubtle} style={styles.searchIcon} />
+        <Search size={17} color={colors.textSubtle} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search discussions or questions..."
@@ -217,7 +221,7 @@ export const ConnectFeedScreen = ({ navigation }) => {
         />
       </View>
 
-      {/* Feed List / Loading / Error / Empty States */}
+      {/* Feed List / States */}
       {loading && !refreshing ? (
         <SkeletonLoader count={3} />
       ) : error ? (
@@ -236,13 +240,13 @@ export const ConnectFeedScreen = ({ navigation }) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={colors.primaryLight}
-              colors={[colors.primary]}
+              tintColor={colors.primary}
+              colors={[colors.primary, colors.secondary]}
             />
           }
           ListEmptyComponent={
             <EmptyState
-              icon={<MessageSquare size={32} color={colors.primaryLight} />}
+              icon={<MessageSquare size={32} color={colors.primary} />}
               title="No discussions found"
               description={
                 searchQuery
@@ -256,13 +260,13 @@ export const ConnectFeedScreen = ({ navigation }) => {
         />
       )}
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button (Warm Orange #FF6F3C) */}
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.85}
         onPress={() => setModalVisible(true)}
       >
-        <Plus size={24} color={colors.textMain} />
+        <Plus size={26} color={colors.textInverse} />
       </TouchableOpacity>
 
       {/* Create Post Modal */}
@@ -271,7 +275,7 @@ export const ConnectFeedScreen = ({ navigation }) => {
         onClose={() => setModalVisible(false)}
         onCreated={(newPost) => {
           if (
-            selectedCategory === "All" ||
+            selectedCategory === "All Topics" ||
             selectedCategory.toLowerCase() === newPost.category?.toLowerCase()
           ) {
             setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]));
@@ -295,28 +299,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderGlass,
     marginHorizontal: spacing.containerPadding,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     marginBottom: spacing.xs,
     paddingHorizontal: spacing.md,
-    height: 42
+    height: 46,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1
   },
   searchIcon: {
     marginRight: spacing.sm
   },
   searchInput: {
     flex: 1,
-    color: colors.textMain,
+    color: colors.textPrimary,
     fontSize: 14
   },
   categoryContainer: {
-    paddingVertical: spacing.sm
+    paddingVertical: spacing.md
   },
   categoriesList: {
     paddingHorizontal: spacing.containerPadding
   },
   listContent: {
     paddingHorizontal: spacing.containerPadding,
-    paddingBottom: 90
+    paddingBottom: 100
   },
   postCard: {
     marginBottom: spacing.md
@@ -332,37 +341,69 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(99, 102, 241, 0.2)",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.bgDim,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.sm
   },
   avatarAnon: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)"
+    backgroundColor: colors.bgSubtle
+  },
+  avatarLetter: {
+    color: colors.primary,
+    fontWeight: "700",
+    fontSize: 14
   },
   authorMeta: {
     justifyContent: "center"
   },
   authorName: {
     ...typography.label,
-    fontSize: 13
+    fontSize: 14,
+    color: colors.textPrimary
   },
   postTime: {
     ...typography.bodySm,
     color: colors.textSubtle,
     fontSize: 11
   },
+  categoryTag: {
+    backgroundColor: colors.bgDim,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.full
+  },
+  categoryTagText: {
+    ...typography.bodySm,
+    color: colors.primary,
+    fontWeight: "700",
+    fontSize: 11
+  },
+  catAcademic: {
+    backgroundColor: "rgba(45, 27, 105, 0.08)"
+  },
+  catAcademicText: {
+    color: colors.primary
+  },
+  catLost: {
+    backgroundColor: colors.accentOrangeLight
+  },
+  catLostText: {
+    color: colors.secondary
+  },
   postTitle: {
     ...typography.h3,
-    fontSize: 16,
+    fontSize: 17,
+    color: colors.textPrimary,
     marginBottom: 6
   },
   postContent: {
     ...typography.body,
-    lineHeight: 20,
+    color: colors.textMuted,
+    lineHeight: 21,
     marginBottom: spacing.md
   },
   cardFooter: {
@@ -373,34 +414,43 @@ const styles = StyleSheet.create({
     borderTopColor: colors.borderSubtle,
     paddingTop: spacing.sm
   },
-  actionBtn: {
+  upvoteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.bgDim,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.full
+  },
+  upvoteCount: {
+    ...typography.bodySm,
+    color: colors.primary,
+    fontWeight: "700"
+  },
+  replyButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6
   },
-  actionCount: {
+  replyText: {
     ...typography.bodySm,
-    color: colors.primaryLight,
-    fontWeight: "700"
-  },
-  actionText: {
-    ...typography.bodySm,
-    color: colors.textMuted
+    color: colors.textSubtle
   },
   fab: {
     position: "absolute",
     bottom: 24,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: colors.secondary, // Warm Orange #FF6F3C
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
     elevation: 6
   }
 });

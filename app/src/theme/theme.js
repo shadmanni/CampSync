@@ -1,38 +1,46 @@
 /**
  * CampusSync Theme Tokens
- * Matches docs/design.md specification exactly.
+ * Faithfully matches Stitch UI Design System (DESIGN.md).
  */
 
 export const colors = {
   // Backgrounds & Canvas
-  bgPrimary: "#0b0f19",
-  bgSurface: "rgba(17, 24, 39, 0.8)",
-  bgSurfaceSolid: "#111827",
-  bgGlass: "rgba(30, 41, 59, 0.65)",
-  bgGlassSolid: "#1e293b",
-  bgGlassHighlight: "rgba(99, 102, 241, 0.12)",
+  bgPrimary: "#F9F9FB",         // Soft editorial canvas
+  bgSurface: "#FFFFFF",         // Pure White floating cards
+  bgSurfaceSolid: "#FFFFFF",
+  bgGlass: "#FFFFFF",
+  bgSubtle: "#F4F2FD",
+  bgDim: "#EDE8FA",            // Soft indigo tint
 
-  // Borders
-  borderGlass: "rgba(255, 255, 255, 0.1)",
-  borderHighlight: "rgba(99, 102, 241, 0.4)",
-  borderSubtle: "rgba(255, 255, 255, 0.06)",
+  // Brand Primaries (Deep Indigo)
+  primary: "#2D1B69",           // Deep Indigo for primary actions/headers
+  primaryHeader: "#180052",     // Darker Indigo for hero banners
+  primaryLight: "#4A3A87",
+  primaryTint: "rgba(45, 27, 105, 0.08)",
 
-  // Brand & Primary Accents
-  primary: "#6366f1",
-  primaryDark: "#4f46e5",
-  primaryLight: "#818cf8",
+  // Brand Accents (Warm Orange & Functionals)
+  secondary: "#FF6F3C",         // Warm Orange primary action CTA
+  accentOrange: "#FF6F3C",
+  accentOrangeLight: "#FFF0EB",
+  accentCyan: "#06B6D4",
+  accentEmerald: "#10B981",
+  accentEmeraldLight: "rgba(16, 185, 129, 0.12)",
+  accentAmber: "#F59E0B",
+  accentRose: "#BA1A1A",
+  accentRoseLight: "#FFDAD6",
 
-  // Function & Status Accents
-  accentCyan: "#06b6d4",
-  accentEmerald: "#10b981",
-  accentAmber: "#f59e0b",
-  accentRose: "#f43f5e",
+  // Borders & Outlines
+  borderGlass: "rgba(0, 0, 0, 0.08)",
+  borderSubtle: "rgba(0, 0, 0, 0.04)",
+  borderHighlight: "rgba(45, 27, 105, 0.25)",
+  outline: "#CAC4D2",
 
   // Typography
-  textMain: "#f8fafc",
-  textMuted: "#94a3b8",
-  textSubtle: "#64748b",
-  textInverse: "#0b0f19"
+  textPrimary: "#1A1A1A",
+  textMain: "#1A1C1D",
+  textMuted: "#484550",
+  textSubtle: "#797582",
+  textInverse: "#FFFFFF"
 };
 
 export const spacing = {
@@ -47,15 +55,15 @@ export const spacing = {
 
 export const radii = {
   sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
+  md: 14,
+  lg: 20,
+  xl: 28,
   full: 9999
 };
 
 export const typography = {
   h1: { fontSize: 28, fontWeight: "700", color: colors.textMain, letterSpacing: -0.5 },
-  h2: { fontSize: 22, fontWeight: "600", color: colors.textMain, letterSpacing: -0.3 },
+  h2: { fontSize: 22, fontWeight: "700", color: colors.textMain, letterSpacing: -0.3 },
   h3: { fontSize: 18, fontWeight: "600", color: colors.textMain },
   bodyLg: { fontSize: 16, fontWeight: "400", color: colors.textMain, lineHeight: 24 },
   body: { fontSize: 14, fontWeight: "400", color: colors.textMuted, lineHeight: 20 },

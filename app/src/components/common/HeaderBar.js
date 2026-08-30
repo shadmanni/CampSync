@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { ShieldCheck, Bell, Sparkles } from "lucide-react-native";
-import { colors, spacing, typography } from "../../theme/theme";
+import { colors, spacing, typography, radii } from "../../theme/theme";
 import { useAuth } from "../../context/AuthContext";
 
 export const HeaderBar = ({ title, subtitle, onNotificationPress }) => {
@@ -12,7 +12,7 @@ export const HeaderBar = ({ title, subtitle, onNotificationPress }) => {
       <View style={styles.left}>
         <View style={styles.logoRow}>
           <View style={styles.logoBadge}>
-            <Sparkles size={16} color={colors.textMain} />
+            <Sparkles size={16} color={colors.textInverse} />
           </View>
           <Text style={styles.brandTitle}>{title || "CampusSync"}</Text>
         </View>
@@ -34,7 +34,7 @@ export const HeaderBar = ({ title, subtitle, onNotificationPress }) => {
           activeOpacity={0.7}
           onPress={onNotificationPress}
         >
-          <Bell size={18} color={colors.textMuted} />
+          <Bell size={18} color={colors.primary} />
           <View style={styles.notificationDot} />
         </TouchableOpacity>
       </View>
@@ -49,9 +49,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: spacing.containerPadding,
     paddingVertical: spacing.md,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: colors.bgSurface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderGlass
+    borderBottomColor: colors.borderGlass,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2
   },
   left: {
     flex: 1
@@ -61,22 +66,23 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   logoBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
+    width: 32,
+    height: 32,
+    borderRadius: radii.md,
+    backgroundColor: colors.primary, // Deep Indigo
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.sm,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 3
   },
   brandTitle: {
     ...typography.h2,
-    fontSize: 20
+    fontSize: 21,
+    color: colors.primary
   },
   subtitle: {
     ...typography.bodySm,
@@ -86,26 +92,24 @@ const styles = StyleSheet.create({
   verifiedRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 2
+    marginTop: 3
   },
   verifiedText: {
     ...typography.bodySm,
     color: colors.accentEmerald,
     marginLeft: 4,
     fontSize: 11,
-    fontWeight: "600"
+    fontWeight: "700"
   },
   right: {
     flexDirection: "row",
     alignItems: "center"
   },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.bgGlass,
-    borderWidth: 1,
-    borderColor: colors.borderGlass,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.bgDim,
     alignItems: "center",
     justifyContent: "center"
   },
@@ -113,9 +117,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     right: 9,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: colors.primaryLight
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.secondary // Warm Orange #FF6F3C
   }
 });

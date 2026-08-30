@@ -6,10 +6,9 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  Alert
+  ScrollView
 } from "react-native";
-import { ShieldCheck, Mail, ArrowRight, Lock } from "lucide-react-native";
+import { ShieldCheck, Mail, ArrowRight, Lock, CheckCircle2 } from "lucide-react-native";
 import { colors, radii, spacing, typography } from "../../theme/theme";
 import { authService } from "../../services/authService";
 import { GlassCard } from "../../components/common/GlassCard";
@@ -47,56 +46,59 @@ export const EmailVerifyScreen = ({ navigation }) => {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Brand Banner */}
-        <View style={styles.heroSection}>
+        {/* Deep Indigo Hero Section */}
+        <View style={styles.heroBanner}>
           <View style={styles.shieldIconWrapper}>
-            <ShieldCheck size={36} color={colors.accentEmerald} />
+            <ShieldCheck size={38} color={colors.textInverse} />
           </View>
           <Text style={styles.heroTitle}>Campus Verification</Text>
           <Text style={styles.heroSubtitle}>
-            CampusSync is an exclusive, trusted network. Verify your student identity with your official college email.
+            CampusSync is an exclusive network for verified students. Connect with your peers using your university email.
           </Text>
         </View>
 
-        {/* Input Glass Card */}
-        <GlassCard style={styles.card} variant="highlight">
-          <Text style={styles.inputLabel}>Official College Email</Text>
-          <View style={styles.inputContainer}>
-            <Mail size={18} color={colors.textMuted} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="yourname@college.edu"
-              placeholderTextColor={colors.textSubtle}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setErrorMsg("");
-              }}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoCorrect={false}
+        {/* Floating White Input Card */}
+        <View style={styles.cardContainer}>
+          <GlassCard style={styles.card}>
+            <Text style={styles.inputLabel}>Official College Email</Text>
+            <View style={styles.inputContainer}>
+              <Mail size={18} color={colors.primary} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="yourname@college.edu"
+                placeholderTextColor={colors.textSubtle}
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setErrorMsg("");
+                }}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoCorrect={false}
+              />
+            </View>
+
+            {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
+
+            <View style={styles.domainsRow}>
+              <CheckCircle2 size={13} color={colors.accentEmerald} />
+              <Text style={styles.domainHint}>Supported: @college.edu, @campus.ac.in, @university.edu</Text>
+            </View>
+
+            <PrimaryButton
+              title="Send Verification Code"
+              onPress={handleRequestOtp}
+              loading={loading}
+              icon={<ArrowRight size={18} color={colors.textInverse} />}
+              style={styles.submitBtn}
             />
-          </View>
-
-          {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
-
-          <View style={styles.domainsRow}>
-            <Text style={styles.domainHint}>Supported: @college.edu, @campus.ac.in, @university.edu</Text>
-          </View>
-
-          <PrimaryButton
-            title="Send Verification Code"
-            onPress={handleRequestOtp}
-            loading={loading}
-            icon={<ArrowRight size={18} color={colors.textMain} />}
-            style={styles.submitBtn}
-          />
-        </GlassCard>
+          </GlassCard>
+        </View>
 
         {/* Trust Badges */}
         <View style={styles.trustBadges}>
           <View style={styles.trustItem}>
-            <Lock size={14} color={colors.textMuted} />
+            <Lock size={14} color={colors.primary} />
             <Text style={styles.trustText}>End-to-End Encrypted OTP</Text>
           </View>
           <View style={styles.trustItem}>
@@ -115,48 +117,59 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgPrimary
   },
   scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: spacing.containerPadding
+    flexGrow: 1
   },
-  heroSection: {
+  heroBanner: {
+    backgroundColor: colors.primaryHeader, // #180052 Deep Indigo
+    paddingTop: 60,
+    paddingBottom: 50,
+    paddingHorizontal: spacing.containerPadding,
     alignItems: "center",
-    marginBottom: spacing.xl
+    borderBottomLeftRadius: radii.xl,
+    borderBottomRightRadius: radii.xl
   },
   shieldIconWrapper: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.3)",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.3)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md
   },
   heroTitle: {
     ...typography.h1,
+    color: colors.textInverse,
     textAlign: "center",
-    marginBottom: spacing.sm
+    marginBottom: spacing.sm,
+    fontSize: 26
   },
   heroSubtitle: {
     ...typography.body,
+    color: "rgba(255, 255, 255, 0.8)",
     textAlign: "center",
-    paddingHorizontal: spacing.sm,
-    lineHeight: 22
+    paddingHorizontal: spacing.md,
+    lineHeight: 22,
+    fontSize: 14
+  },
+  cardContainer: {
+    paddingHorizontal: spacing.containerPadding,
+    marginTop: -30
   },
   card: {
-    padding: spacing.lg,
-    marginBottom: spacing.xl
+    padding: spacing.lg
   },
   inputLabel: {
     ...typography.label,
+    color: colors.textPrimary,
     marginBottom: spacing.sm
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.bgSurface,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.borderGlass,
@@ -169,21 +182,26 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 48,
-    color: colors.textMain,
+    color: colors.textPrimary,
     ...typography.bodyLg,
     fontSize: 15
   },
   errorText: {
     ...typography.bodySm,
     color: colors.accentRose,
-    marginBottom: spacing.sm
+    marginBottom: spacing.sm,
+    fontWeight: "600"
   },
   domainsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     marginBottom: spacing.lg
   },
   domainHint: {
     ...typography.bodySm,
-    color: colors.textSubtle
+    color: colors.textSubtle,
+    fontSize: 12
   },
   submitBtn: {
     marginTop: spacing.xs
@@ -191,7 +209,8 @@ const styles = StyleSheet.create({
   trustBadges: {
     flexDirection: "row",
     justifyContent: "space-around",
-    paddingVertical: spacing.md
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.containerPadding
   },
   trustItem: {
     flexDirection: "row",
@@ -200,6 +219,7 @@ const styles = StyleSheet.create({
   },
   trustText: {
     ...typography.bodySm,
-    color: colors.textMuted
+    color: colors.textMuted,
+    fontWeight: "600"
   }
 });

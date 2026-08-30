@@ -18,7 +18,7 @@ export const PrimaryButton = ({
 
   return (
     <TouchableOpacity
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       onPress={onPress}
       disabled={disabled || loading}
       style={[
@@ -31,13 +31,14 @@ export const PrimaryButton = ({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isOutline || isGhost ? colors.primary : colors.textMain} size="small" />
+        <ActivityIndicator color={isOutline || isGhost ? colors.primary : colors.textInverse} size="small" />
       ) : (
         <View style={styles.content}>
           {icon && <View style={styles.iconContainer}>{icon}</View>}
           <Text
             style={[
               styles.text,
+              isSecondary && styles.textSecondary,
               (isOutline || isGhost) && styles.textOutline,
               textStyle
             ]}
@@ -52,32 +53,33 @@ export const PrimaryButton = ({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: colors.primary,
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.secondary, // Warm Orange #FF6F3C
+    borderRadius: radii.full,
+    paddingVertical: 15,
+    paddingHorizontal: spacing.xl,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    borderWidth: 1,
-    borderColor: colors.borderHighlight,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
     elevation: 4
   },
   buttonSecondary: {
-    backgroundColor: colors.bgGlass,
-    borderColor: colors.borderGlass
+    backgroundColor: colors.primary, // Deep Indigo
+    shadowColor: colors.primary,
+    shadowOpacity: 0.2
   },
   buttonOutline: {
     backgroundColor: "transparent",
-    borderColor: colors.primary
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    shadowOpacity: 0,
+    elevation: 0
   },
   buttonGhost: {
     backgroundColor: "transparent",
-    borderColor: "transparent",
     shadowOpacity: 0,
     elevation: 0
   },
@@ -96,11 +98,14 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.label,
-    color: colors.textMain,
+    color: colors.textInverse,
     fontSize: 15,
-    fontWeight: "600"
+    fontWeight: "700"
+  },
+  textSecondary: {
+    color: colors.textInverse
   },
   textOutline: {
-    color: colors.primaryLight
+    color: colors.primary
   }
 });

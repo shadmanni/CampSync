@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Platform } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -34,13 +34,22 @@ function ConnectStackNavigator() {
   );
 }
 
+function TabIcon({ Icon, color, focused }) {
+  return (
+    <View style={styles.tabIconWrapper}>
+      <Icon color={color} size={22} />
+      {focused && <View style={styles.activeDot} />}
+    </View>
+  );
+}
+
 function MainTabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: colors.primaryLight,
+        tabBarActiveTintColor: colors.primary, // Deep Indigo
         tabBarInactiveTintColor: colors.textSubtle,
         tabBarLabelStyle: styles.tabLabel
       }}
@@ -50,7 +59,9 @@ function MainTabNavigator() {
         component={ConnectStackNavigator}
         options={{
           tabBarLabel: "Connect",
-          tabBarIcon: ({ color, size }) => <MessageSquare color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon Icon={MessageSquare} color={color} focused={focused} />
+          )
         }}
       />
       <Tab.Screen
@@ -58,7 +69,9 @@ function MainTabNavigator() {
         component={BidBrowseScreen}
         options={{
           tabBarLabel: "Bid",
-          tabBarIcon: ({ color, size }) => <Gavel color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon Icon={Gavel} color={color} focused={focused} />
+          )
         }}
       />
       <Tab.Screen
@@ -66,7 +79,9 @@ function MainTabNavigator() {
         component={RideListScreen}
         options={{
           tabBarLabel: "Ride",
-          tabBarIcon: ({ color, size }) => <Car color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon Icon={Car} color={color} focused={focused} />
+          )
         }}
       />
       <Tab.Screen
@@ -74,7 +89,9 @@ function MainTabNavigator() {
         component={NearbyFeedScreen}
         options={{
           tabBarLabel: "Nearby",
-          tabBarIcon: ({ color, size }) => <Compass color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon Icon={Compass} color={color} focused={focused} />
+          )
         }}
       />
       <Tab.Screen
@@ -82,7 +99,9 @@ function MainTabNavigator() {
         component={ProfileScreen}
         options={{
           tabBarLabel: "Profile",
-          tabBarIcon: ({ color, size }) => <User color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon Icon={User} color={color} focused={focused} />
+          )
         }}
       />
     </Tab.Navigator>
@@ -125,15 +144,34 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   tabBar: {
-    backgroundColor: colors.bgSurfaceSolid,
+    backgroundColor: colors.bgSurface,
     borderTopWidth: 1,
     borderTopColor: colors.borderGlass,
-    height: 64,
-    paddingBottom: 8,
-    paddingTop: 8
+    height: Platform.OS === "ios" ? 84 : 66,
+    paddingBottom: Platform.OS === "ios" ? 22 : 8,
+    paddingTop: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 8
   },
   tabLabel: {
     fontSize: 11,
-    fontWeight: "600"
+    fontWeight: "700",
+    marginTop: 2
+  },
+  tabIconWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 28
+  },
+  activeDot: {
+    position: "absolute",
+    bottom: -6,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.secondary // Warm Orange #FF6F3C
   }
 });
