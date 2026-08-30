@@ -1,27 +1,18 @@
 import { seed } from './seed.js';
 
 /**
- * Thin fetch wrapper over the CampusSync REST API.
- *
- * Two things beyond plain fetch:
- *
- * 1. A timeout. A hung request during a live demo is worse than a failed one,
- *    because the UI just sits on a spinner with nothing to say.
- *
- * 2. An explicit offline fallback. If the API cannot be reached, reads fall
- *    back to bundled seed data and the app raises a banner saying so. This is
- *    deliberately *visible* — the point is that the UI stays walkable when the
- *    server is down, not that a viewer is fooled into thinking it is live.
+ * Fetch wrapper over the CampusSync REST API with environment support,
+ * timeout controls, and bundled seed fallback when offline.
  */
 
 const TIMEOUT_MS = 6000;
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
 /** Subscribers to connectivity changes (the offline banner listens here). */
 const listeners = new Set();
 
 export const connection = {
   online: true,
-  /** True once a request has actually failed, so we do not warn pre-emptively. */
   degraded: false,
 };
 
@@ -48,10 +39,6 @@ export class ApiError extends Error {
 
 /**
  * The JWT issued at verification.
- *
- * Every write route runs `optionalAuth`, which prefers `req.user.name` over the
- * display name in the body — so sending this is what makes a post or a bid
- * actually attributable to the verified account rather than to a guest.
  */
 function authHeader() {
   try {
@@ -68,7 +55,7 @@ async function request(path, { method = 'GET', body, signal } = {}) {
   if (signal) signal.addEventListener('abort', () => controller.abort());
 
   try {
-    const res = await fetch(`/api${path}`, {
+    const res = await fetch(`${API_BASE}${path}`, {
       method,
       headers: {
         ...(body ? { 'Content-Type': 'application/json' } : {}),
@@ -82,8 +69,6 @@ async function request(path, { method = 'GET', body, signal } = {}) {
     const data = text ? JSON.parse(text) : null;
 
     if (!res.ok) {
-      // A 4xx is the server working correctly and rejecting us (bad bid, full
-      // ride). That is not a connectivity problem, so do not mark degraded.
       if (res.status < 500) setDegraded(false);
       throw new ApiError(data?.error || `Request failed (${res.status})`, res.status);
     }
@@ -92,7 +77,6 @@ async function request(path, { method = 'GET', body, signal } = {}) {
     return data;
   } catch (err) {
     if (err instanceof ApiError) throw err;
-    // Network error, DNS failure, timeout, or unparseable body.
     setDegraded(true);
     throw new ApiError(
       err.name === 'AbortError' ? 'The server took too long to respond.' : 'Cannot reach the CampusSync API.',
@@ -114,11 +98,12 @@ async function readOr(path, fallback) {
 }
 
 export const api = {
-  /* ---- Auth & campus verification (Member 5) ---------------------------- */
+  /* ---- Auth & Campus Verification --------------------------------------- */
   requestOtp: (email) => request('/auth/request-otp', { method: 'POST', body: { email } }),
   verifyOtp: (email, otp) => request('/auth/verify-otp', { method: 'POST', body: { email, otp } }),
+  getMe: () => request('/auth/me'),
 
-  /* ---- CampusConnect ---------------------------------------------------- */
+  /* ---- CampusConnect (Discussions & Voting) ------------------------------ */
   getPosts: (category) =>
     readOr(
       category && category !== 'All'
@@ -130,22 +115,48 @@ export const api = {
     ),
   createPost: (payload) => request('/connect/posts', { method: 'POST', body: payload }),
   upvotePost: (id) => request(`/connect/posts/${id}/upvote`, { method: 'POST' }),
+  downvotePost: (id) => request(`/connect/posts/${id}/downvote`, { method: 'POST' }),
   addComment: (id, payload) =>
     request(`/connect/posts/${id}/comments`, { method: 'POST', body: payload }),
 
-  /* ---- CampusBid -------------------------------------------------------- */
+  /* ---- CampusBid & Marketplace (Auctions & Store) ----------------------- */
   getItems: () => readOr('/bid/items', seed.items),
   createItem: (payload) => request('/bid/items', { method: 'POST', body: payload }),
   placeBid: (id, payload) => request(`/bid/items/${id}/bid`, { method: 'POST', body: payload }),
+
+  /* ---- CampusSkills (Skill-Sharing Network) ------------------------------ */
+  getSkills: ({ category, type, search } = {}) => {
+    const params = new URLSearchParams();
+    if (category && category !== 'All') params.append('category', category);
+    if (type && type !== 'ALL') params.append('type', type);
+    if (search && search.trim()) params.append('search', search.trim());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return readOr(`/skills${query}`, seed.skills || []);
+  },
+  getSkillById: (id) => request(`/skills/${id}`),
+  createSkill: (payload) => request('/skills', { method: 'POST', body: payload }),
+  deleteSkill: (id) => request(`/skills/${id}`, { method: 'DELETE' }),
+
+  /* ---- CampusTasks (Micro-Tasks & Campus Gigs) --------------------------- */
+  getTasks: ({ status, category } = {}) => {
+    const params = new URLSearchParams();
+    if (status && status !== 'ALL') params.append('status', status);
+    if (category && category !== 'All') params.append('category', category);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return readOr(`/tasks${query}`, seed.tasks || []);
+  },
+  getTaskById: (id) => request(`/tasks/${id}`),
+  createTask: (payload) => request('/tasks', { method: 'POST', body: payload }),
+  acceptTask: (id, payload = {}) => request(`/tasks/${id}/accept`, { method: 'POST', body: payload }),
+  completeTask: (id) => request(`/tasks/${id}/complete`, { method: 'POST' }),
 
   /* ---- CampusRide & Events ---------------------------------------------- */
   getRides: () => readOr('/ride/rides', seed.rides),
   createRide: (payload) => request('/ride/rides', { method: 'POST', body: payload }),
   joinRide: (id, payload) => request(`/ride/rides/${id}/join`, { method: 'POST', body: payload }),
   getEvents: () => readOr('/ride/events', seed.events),
-  /* One-way increment server-side — there is no un-RSVP endpoint. */
   rsvpEvent: (id) => request(`/ride/events/${id}/rsvp`, { method: 'POST' }),
 
-  /* ---- CampusNearby ----------------------------------------------------- */
+  /* ---- CampusNearby (Discounts & Deals) --------------------------------- */
   getDeals: () => readOr('/nearby/deals', seed.deals),
 };

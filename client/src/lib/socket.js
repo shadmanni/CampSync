@@ -2,15 +2,16 @@ import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 
 /**
- * Single shared Socket.io connection.
+ * Single shared Socket.io connection with auth token support and environment routing.
  *
- * The server emits three events today:
+ * Supported server events:
  *   connect:new_post    — a post landed in the CampusConnect feed
  *   bid:new_highest     — someone outbid the current high bid
  *   ride:seat_updated   — a carpool seat was taken
- *
- * Created lazily on first subscription so a viewer who never opens a live
- * module does not hold a socket open.
+ *   task:created        — a new micro-task/errand posted
+ *   task:assigned       — a runner claimed an errand
+ *   task:completed      — a task marked completed
+ *   skill:created       — new skill offered/requested
  */
 
 let socket = null;
@@ -18,16 +19,18 @@ let socket = null;
 function getSocket() {
   if (socket) return socket;
 
-  socket = io({
-    // Same origin: Vite proxies /socket.io through to the API in dev, and in
-    // production the client is served behind the same host.
+  const url = import.meta.env.VITE_API_URL || undefined;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('campussync_token') : null;
+
+  socket = io(url, {
     transports: ['websocket', 'polling'],
-    // Give up after a while instead of retrying forever against a dead API
-    // and flooding the console during an offline demo.
-    reconnectionAttempts: 6,
-    reconnectionDelay: 1200,
-    reconnectionDelayMax: 6000,
-    timeout: 5000,
+    auth: {
+      token: token || '',
+    },
+    reconnectionAttempts: 8,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    timeout: 6000,
     autoConnect: true,
   });
 
@@ -36,9 +39,6 @@ function getSocket() {
 
 /**
  * Subscribe to one server event for the lifetime of a component.
- *
- * `handler` is stashed in a ref-free closure re-registered on change, which is
- * fine here because every call site passes a `useCallback`-stable handler.
  */
 export function useSocketEvent(event, handler, { enabled = true } = {}) {
   useEffect(() => {

@@ -1,11 +1,8 @@
-import { MessagesSquare, Gavel, CarFront, MapPinned } from 'lucide-react';
+import { MessagesSquare, Gavel, Sparkles, CheckSquare, CarFront, MapPinned } from 'lucide-react';
 
 /**
- * The four modules, in navigation order.
- *
- * Single source of truth for tab order, colour identity and copy — the navbar,
- * mobile tab bar, landing showcase and page transitions all read from here, so
- * adding a fifth module is a one-line change.
+ * The six dashboard modules, in navigation order.
+ * Single source of truth for tab order, colour identity and copy.
  */
 export const MODULES = [
   {
@@ -23,14 +20,38 @@ export const MODULES = [
   {
     id: 'bid',
     label: 'CampusBid',
-    short: 'Bid',
+    short: 'Marketplace',
     icon: Gavel,
     accent: 'accent-coral',
     color: 'var(--coral)',
-    tagline: 'Buy and sell, on campus',
+    tagline: 'Buy, sell & bid on campus',
     blurb:
-      'Textbooks, cycles, chairs, calculators. Live auctions with real-time highest-bid tracking, so nobody has to haggle in a group chat.',
-    highlights: ['Live highest bid', 'Quick-raise increments', 'Verified sellers only'],
+      'Textbooks, cycles, chairs, calculators and event passes. Direct second-hand sales and live auctions with outbid protection.',
+    highlights: ['Direct sale + Live auction', 'Condition tagging', 'Outbid protection'],
+  },
+  {
+    id: 'skills',
+    label: 'CampusSkills',
+    short: 'Skills',
+    icon: Sparkles,
+    accent: 'accent-amber',
+    color: '#f59e0b',
+    tagline: 'Peer skill exchange & tutoring',
+    blurb:
+      'Find 1-on-1 tutoring in DSA, coding, UI design, music, photography, and languages from fellow verified students.',
+    highlights: ['Offer & Request filters', 'Hourly rates / Peer exchange', 'Direct contact'],
+  },
+  {
+    id: 'tasks',
+    label: 'CampusTasks',
+    short: 'Tasks & Gigs',
+    icon: CheckSquare,
+    accent: 'accent-emerald',
+    color: '#10b981',
+    tagline: 'Micro-tasks & paid campus errands',
+    blurb:
+      'Need printouts collected, luggage moved, or packages picked up from the gate? Post a task with a reward or earn cash assisting peers.',
+    highlights: ['Cash rewards (₹50-₹250)', 'Atomic task claims', 'Campus pickup & drop'],
   },
   {
     id: 'ride',
@@ -41,19 +62,19 @@ export const MODULES = [
     color: 'var(--mint)',
     tagline: 'Carpools & campus events',
     blurb:
-      'Split the fare to the station or the airport, and find what is happening this week. Seat counts update on every device the instant one is taken.',
-    highlights: ['Live seat counter', 'Split fares', 'Event RSVPs'],
+      'Split the fare to the station or airport, and find campus club events. Seat counts update on every device atomically.',
+    highlights: ['Live seat counter', 'Split fares', 'Anti-overbooking guard'],
   },
   {
     id: 'nearby',
     label: 'CampusNearby',
-    short: 'Nearby',
+    short: 'Deals',
     icon: MapPinned,
     accent: 'accent-sky',
     color: 'var(--sky)',
     tagline: 'Deals around the gate',
     blurb:
-      'Student pricing at the places within walking distance, from official partners and from whoever found the deal first.',
+      'Student discounts at cafes, print shops, and stores within walking distance with promo codes and partner badges.',
     highlights: ['Partner-verified offers', 'Distance from campus', 'One-tap code copy'],
   },
 ];

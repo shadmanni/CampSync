@@ -11,6 +11,8 @@ import { Landing } from './components/Landing.jsx';
 import { AuthModal } from './modules/auth/AuthModal.jsx';
 import { CampusConnect } from './modules/connect/CampusConnect.jsx';
 import { CampusBid } from './modules/bid/CampusBid.jsx';
+import { CampusSkills } from './modules/skills/CampusSkills.jsx';
+import { CampusTasks } from './modules/tasks/CampusTasks.jsx';
 import { CampusRide } from './modules/ride/CampusRide.jsx';
 import { CampusNearby } from './modules/nearby/CampusNearby.jsx';
 
@@ -26,6 +28,8 @@ import './styles/components.css';
 const VIEWS = {
   connect: CampusConnect,
   bid: CampusBid,
+  skills: CampusSkills,
+  tasks: CampusTasks,
   ride: CampusRide,
   nearby: CampusNearby,
 };
@@ -78,8 +82,7 @@ function Shell() {
     scrollTo(0, { immediate: true });
   }, [scrollTo]);
 
-  /* Number keys jump straight to a module — handy when presenting, since you
-     never have to hunt for a tab mid-sentence. */
+  /* Number keys jump straight to a module — handy when presenting */
   const onDigit = useCallback(
     (e) => {
       const index = Number(e.key) - 1;
@@ -92,33 +95,63 @@ function Shell() {
   useHotkey('2', onDigit, { enabled: entered });
   useHotkey('3', onDigit, { enabled: entered });
   useHotkey('4', onDigit, { enabled: entered });
+  useHotkey('5', onDigit, { enabled: entered });
+  useHotkey('6', onDigit, { enabled: entered });
 
   const Active = VIEWS[tab];
 
   return (
     <>
       <div className="aura" aria-hidden="true" />
-      <div className="grain" aria-hidden="true" />
 
-      <ScrollProgress />
+      {/* ---- Scroll progress bar ---- */}
+      <ProgressBar />
 
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <Navbar active={entered ? tab : null} onNavigate={navigate} onBrandClick={goHome} />
-
-        <OfflineBanner show={offline} />
-
-        <main style={{ flex: 1 }}>
-          <AnimatePresence mode="wait" initial={false} custom={direction}>
-            {!entered ? (
-              <motion.div
-                key="landing"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, transition: { duration: 0.35 } }}
-                exit={{ opacity: 0, transition: { duration: 0.2 } }}
+      {/* ---- Offline warning banner ---- */}
+      <AnimatePresence>
+        {offline && (
+          <motion.aside
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={spring.snappy}
+            role="status"
+            aria-live="polite"
+            style={{
+              background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.16), rgba(245, 158, 11, 0.16))',
+              borderBottom: '1px solid rgba(239, 68, 68, 0.3)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              className="shell row-between"
+              style={{ padding: '8px 0', fontSize: '0.8rem', color: 'var(--ink)' }}
+            >
+              <span className="row" style={{ gap: 8 }}>
+                <CloudOff size={14} style={{ color: 'var(--coral)' }} />
+                <span>
+                  <strong>Offline demo mode:</strong> Showing bundled seed data. Start the API on port 5000 for live data.
+                </span>
+              </span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => window.location.reload()}
+                style={{ padding: '3px 9px', fontSize: '0.74rem' }}
               >
-                <Landing onEnter={openAuth} onExplore={() => navigate('connect')} />
-              </motion.div>
-            ) : (
+                Retry
+              </button>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      <Navbar active={entered ? tab : null} onNavigate={navigate} onBrandClick={goHome} />
+
+      <main id="main-content" style={{ minHeight: '80vh' }}>
+        {entered ? (
+          <div className="shell" style={{ paddingTop: 'var(--space-md)', paddingBottom: 'var(--space-xl)' }}>
+            <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={tab}
                 custom={direction}
@@ -126,144 +159,139 @@ function Shell() {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                className="shell"
-                style={{
-                  paddingBlock: 'clamp(28px, 5vh, 52px)',
-                  // Clear the fixed mobile tab bar.
-                  paddingBottom: 'calc(100px + env(safe-area-inset-bottom))',
-                }}
+                transition={spring.soft}
               >
                 <Active />
               </motion.div>
-            )}
-          </AnimatePresence>
-        </main>
+            </AnimatePresence>
+          </div>
+        ) : (
+          <Landing onEnter={navigate} />
+        )}
+      </main>
 
-        <Footer onNavigate={navigate} />
-      </div>
-
+      <Footer onNavigate={navigate} onHome={goHome} />
       <MobileTabBar active={entered ? tab : null} onNavigate={navigate} />
-      <BackToTop onClick={() => scrollTo(0)} />
+      <ScrollToTop />
       <AuthModal />
     </>
   );
 }
 
-/* ==========================================================================
-   Chrome
-   ========================================================================== */
-
-/** Rainbow rail across the top, driven directly by document scroll progress. */
-function ScrollProgress() {
+function ProgressBar() {
   const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, { stiffness: 140, damping: 26, restDelta: 0.001 });
-  return <motion.div className="scroll-progress" style={{ scaleX }} aria-hidden="true" />;
-}
+  const scaleX = useSpring(scrollYProgress, { stiffness: 400, damping: 40, restDelta: 0.001 });
 
-/**
- * Says plainly that the API is unreachable and the screen is showing bundled
- * sample data. Being explicit is the point — a demo that silently fakes its
- * data is worse than one that admits the backend is down.
- */
-function OfflineBanner({ show }) {
   return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={spring.soft}
-          style={{ overflow: 'hidden', background: 'var(--sun-soft)' }}
-        >
-          <div
-            className="shell row"
-            style={{ gap: 10, paddingBlock: 10, fontSize: 'var(--t-small)', fontWeight: 600 }}
-          >
-            <CloudOff size={15} strokeWidth={2.4} />
-            <span>
-              Can’t reach the CampusSync API — showing bundled sample data. Posting, bidding and
-              joining rides are disabled until the server is back.
-            </span>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <motion.div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 2,
+        transformOrigin: '0%',
+        scaleX,
+        background: 'linear-gradient(90deg, var(--violet), var(--coral), var(--mint), var(--sky))',
+        zIndex: 100,
+      }}
+    />
   );
 }
 
-function BackToTop({ onClick }) {
-  const { scrollY } = useScroll();
-  const [show, setShow] = useState(false);
+function Footer({ onNavigate, onHome }) {
+  return (
+    <footer
+      style={{
+        borderTop: '1px solid var(--line)',
+        background: 'var(--surface-muted)',
+        padding: 'var(--space-lg) 0 calc(var(--space-lg) + 50px)',
+        marginTop: 'var(--space-xl)',
+        fontSize: '0.82rem',
+        color: 'var(--text-subtle)',
+      }}
+    >
+      <div className="shell col" style={{ gap: 'var(--space-md)' }}>
+        <div className="row-between" style={{ flexWrap: 'wrap', gap: 'var(--gap)' }}>
+          <div className="col" style={{ gap: 4 }}>
+            <button
+              type="button"
+              onClick={onHome}
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontWeight: 800,
+                fontSize: '1rem',
+                color: 'var(--ink)',
+                background: 'none',
+                border: 0,
+                padding: 0,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              CampusSync
+            </button>
+            <span>One unified application for everything that happens on campus.</span>
+          </div>
 
-  useEffect(() => scrollY.on('change', (y) => setShow(y > 700)), [scrollY]);
+          <nav aria-label="Footer modules" className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            {MODULES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className="pill"
+                onClick={() => onNavigate(m.id)}
+                style={{ fontSize: '0.74rem' }}
+              >
+                {m.short}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        <div className="row-between" style={{ borderTop: '1px solid var(--line)', paddingTop: 16, fontSize: '0.75rem' }}>
+          <span>CPI Team of 8 • React (Vite) + React Native (Expo) + Node.js + Render PostgreSQL</span>
+          <span>© 2026 CampusSync</span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function ScrollToTop() {
+  const { scrollY } = useScroll();
+  const { scrollTo } = useSmoothScroll();
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    return scrollY.on('change', (y) => setVisible(y > 400));
+  }, [scrollY]);
 
   return (
     <AnimatePresence>
-      {show && (
+      {visible && (
         <motion.button
           type="button"
-          onClick={onClick}
-          aria-label="Back to top"
-          initial={{ opacity: 0, scale: 0.6, y: 12 }}
+          aria-label="Scroll to top"
+          onClick={() => scrollTo(0)}
+          initial={{ opacity: 0, scale: 0.8, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.6, y: 12 }}
-          transition={spring.bouncy}
-          whileHover={{ y: -3 }}
-          className="btn btn-ink btn-icon hide-sm"
+          exit={{ opacity: 0, scale: 0.8, y: 10 }}
+          transition={spring.snappy}
+          className="btn-icon"
           style={{
             position: 'fixed',
-            right: 26,
-            bottom: 26,
-            zIndex: 85,
-            width: 44,
-            height: 44,
-            boxShadow: 'var(--shadow-lift)',
+            right: 20,
+            bottom: 74,
+            zIndex: 40,
+            background: 'var(--surface-raised)',
+            boxShadow: 'var(--shadow-raised)',
+            border: '1px solid var(--line)',
           }}
         >
-          <ArrowUp size={17} strokeWidth={2.8} />
+          <ArrowUp size={16} />
         </motion.button>
       )}
     </AnimatePresence>
-  );
-}
-
-function Footer({ onNavigate }) {
-  return (
-    <footer style={{ borderTop: 'var(--line-width) solid var(--line)', marginTop: 40 }}>
-      <div
-        className="shell row-between wrap"
-        style={{ paddingBlock: 26, gap: 20, alignItems: 'flex-start' }}
-      >
-        <div>
-          <p
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 800,
-              fontSize: '1rem',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            CampusSync
-          </p>
-          <p className="t-faint" style={{ fontSize: 'var(--t-micro)', marginTop: 3 }}>
-            CPI team project · 8 members · React, Express, Socket.io
-          </p>
-        </div>
-
-        <nav className="row wrap" style={{ gap: 6 }} aria-label="Modules">
-          {MODULES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => onNavigate(m.id)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-    </footer>
   );
 }
