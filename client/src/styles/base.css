@@ -1,0 +1,193 @@
+/* ==========================================================================
+   CampusSync — Base layer: reset, canvas, typography, a11y
+   ========================================================================== */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+* { margin: 0; padding: 0; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  /* Lenis drives scrolling; native smooth-scroll would fight it. */
+  scroll-behavior: auto;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color var(--dur-slow) var(--ease-out),
+              color var(--dur-slow) var(--ease-out);
+}
+
+/* ---- Ambient background -------------------------------------------------
+   Three slow-drifting colour fields + a grain sheet. Fixed, pointer-events
+   none, and behind everything — it never intercepts a click. */
+.aura {
+  position: fixed;
+  inset: -20vh -10vw;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(46rem 34rem at 12% 8%, var(--aura-1), transparent 62%),
+    radial-gradient(38rem 30rem at 88% 22%, var(--aura-2), transparent 60%),
+    radial-gradient(44rem 36rem at 60% 96%, var(--aura-3), transparent 64%);
+  animation: aura-drift 34s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes aura-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-2.5%, 2%, 0) scale(1.06); }
+  100% { transform: translate3d(2%, -2.5%, 0) scale(1.02); }
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: var(--grain-blend, multiply);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+}
+
+:root[data-theme='dark'] .grain { --grain-blend: screen; }
+
+/* ---- Typography ---------------------------------------------------------- */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+p { text-wrap: pretty; }
+
+.t-hero {
+  font-size: var(--t-hero);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+}
+
+.t-display { font-size: var(--t-display); font-weight: 800; letter-spacing: -0.035em; }
+.t-title   { font-size: var(--t-title);   font-weight: 700; }
+
+/* Eyebrow label above section headings */
+.t-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.t-muted { color: var(--ink-soft); }
+.t-faint { color: var(--ink-faint); }
+.t-mono  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Tabular numerals everywhere a number can change under the user's eyes —
+   prices, seat counts, timers — so digits never jitter mid-animation. */
+.t-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+a { color: inherit; text-decoration: none; }
+button, input, select, textarea { font: inherit; color: inherit; }
+img, svg, video { display: block; max-width: 100%; }
+
+/* ---- Selection & focus --------------------------------------------------- */
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--r-xs);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Scrollbar ----------------------------------------------------------- */
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
+  border: 3px solid var(--canvas);
+  border-radius: var(--r-pill);
+}
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--ink) 40%, transparent); }
+
+/* ---- Layout -------------------------------------------------------------- */
+.shell {
+  width: 100%;
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  padding-inline: clamp(16px, 4vw, 32px);
+}
+
+.stack   { display: flex; flex-direction: column; gap: var(--gap); }
+.stack-lg{ display: flex; flex-direction: column; gap: var(--gap-lg); }
+.row     { display: flex; align-items: center; gap: var(--gap-sm); }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); }
+.wrap    { flex-wrap: wrap; }
+.grow    { flex: 1; }
+
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+  gap: var(--gap-lg);
+}
+
+/* ---- Reduced motion ------------------------------------------------------
+   Honour the OS setting: kill ambient drift and long transitions, but keep
+   opacity changes so state is still legible. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .aura { animation: none; }
+}
+
+/* ---- Lenis ---------------------------------------------------------------
+   Required by the inertial scroller: it needs the document to size naturally,
+   native smooth-scroll disabled so the two do not fight, and a way to fully
+   stop while an overlay is open. */
+html.lenis,
+html.lenis body { height: auto; }
+
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+/* Pointer events over an iframe would swallow the wheel mid-scroll. */
+.lenis.lenis-scrolling iframe { pointer-events: none; }

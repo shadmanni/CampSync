@@ -1,0 +1,348 @@
+/* ==========================================================================
+   CampusSync — Component layer
+   Every rule reads from tokens.css only. Nothing here knows which theme is
+   active; the light "ink edge + offset block" and the dark "rim + glow" are
+   the same declarations resolving different variables.
+   ========================================================================== */
+
+/* ---- Surfaces ------------------------------------------------------------ */
+.card {
+  position: relative;
+  background: var(--surface);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-soft);
+  transition: transform var(--dur) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out),
+              border-color var(--dur) var(--ease-out);
+}
+
+/* The signature slab: hard ink edge + offset block (light) / rim + glow (dark) */
+.card-pop {
+  position: relative;
+  background: var(--surface);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-hard);
+  transition: transform var(--dur) var(--ease-spring),
+              box-shadow var(--dur) var(--ease-spring);
+}
+
+.card-pop.is-interactive:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: var(--shadow-hard-lg);
+}
+
+.card-pop.is-interactive:active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-hard-sm);
+}
+
+.card-glass {
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-lg);
+}
+
+.card-inset {
+  background: var(--surface-inset);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--r-md);
+}
+
+/* Coloured hairline along the top of a module card — cheap identity cue. */
+.card-topline::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 25%, transparent));
+}
+
+/* ---- Buttons ------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border: 2px solid transparent;
+  border-radius: var(--r-pill);
+  font-family: var(--font-body);
+  font-size: var(--t-small);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: transform var(--dur-fast) var(--ease-spring),
+              box-shadow var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-hard-sm);
+}
+.btn-primary:not(:disabled):hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-hard); }
+.btn-primary:not(:disabled):active { transform: translate(1px, 1px); box-shadow: none; }
+
+.btn-ink {
+  background: var(--ink);
+  color: var(--ink-invert);
+  border-color: var(--ink);
+}
+.btn-ink:not(:disabled):hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+.btn-ghost:not(:disabled):hover {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.btn-soft {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+.btn-soft:not(:disabled):hover { transform: translateY(-2px); }
+
+.btn-sm { padding: 7px 13px; font-size: var(--t-micro); gap: 6px; }
+.btn-lg { padding: 15px 28px; font-size: 1rem; }
+.btn-icon { padding: 9px; border-radius: var(--r-pill); aspect-ratio: 1; }
+.btn-block { width: 100%; }
+
+/* ---- Pills / chips / badges ---------------------------------------------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  border: var(--line-width) solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+.chip:hover { border-color: var(--line-strong); color: var(--ink); }
+.chip[data-active="true"] { color: var(--ink-invert); border-color: transparent; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.badge-outline {
+  background: transparent;
+  border: var(--line-width) solid var(--line);
+  color: var(--ink-soft);
+}
+
+/* Live status dot with a breathing halo */
+.dot-live {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+.dot-live::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  animation: pulse-ring 1.8s var(--ease-out) infinite;
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* ---- Forms --------------------------------------------------------------- */
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.field-label {
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.input {
+  width: 100%;
+  padding: 12px 15px;
+  background: var(--surface-inset);
+  border: 2px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font-size: var(--t-body);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+.input::placeholder { color: var(--ink-faint); }
+.input:focus { border-color: var(--accent); background: var(--surface); }
+.input:focus-visible { outline: none; }
+
+textarea.input { min-height: 108px; resize: vertical; line-height: 1.55; }
+
+select.input {
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 19px) 50%, calc(100% - 14px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 38px;
+}
+
+/* Switch */
+.switch {
+  position: relative;
+  width: 46px;
+  height: 27px;
+  border-radius: var(--r-pill);
+  background: var(--surface-inset);
+  border: 2px solid var(--line);
+  cursor: pointer;
+  flex: none;
+  padding: 0;
+  transition: background-color var(--dur) var(--ease-out),
+              border-color var(--dur) var(--ease-out);
+}
+.switch[data-on="true"] { background: var(--accent); border-color: var(--accent); }
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  transition: transform var(--dur) var(--ease-spring);
+}
+.switch[data-on="true"]::after { transform: translateX(19px); }
+
+/* ---- Skeletons ----------------------------------------------------------- */
+.skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-inset);
+  border-radius: var(--r-sm);
+}
+.skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent,
+              color-mix(in srgb, var(--ink) 7%, transparent), transparent);
+  animation: shimmer 1.35s infinite;
+}
+@keyframes shimmer { to { transform: translateX(100%); } }
+
+/* ---- Meters -------------------------------------------------------------- */
+.meter {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-inset);
+  overflow: hidden;
+  border: var(--line-width) solid var(--line);
+}
+.meter-fill { height: 100%; border-radius: var(--r-pill); background: var(--accent); }
+
+/* ---- Marquee ------------------------------------------------------------- */
+.marquee {
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-lg);
+  flex: none;
+  min-width: 100%;
+  padding-right: var(--gap-lg);
+  animation: marquee-scroll var(--marquee-dur, 34s) linear infinite;
+}
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
+}
+
+/* ---- Misc ---------------------------------------------------------------- */
+.rule { height: var(--line-width); background: var(--line); border: 0; }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 56px 24px;
+  text-align: center;
+  border: 2px dashed var(--line);
+  border-radius: var(--r-lg);
+  color: var(--ink-faint);
+}
+
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--violet), var(--coral), var(--mint), var(--sky));
+  z-index: 80;
+}
+
+/* ---- Responsive ---------------------------------------------------------- */
+@media (max-width: 860px) {
+  :root { --nav-h: 62px; }
+  .hide-sm { display: none !important; }
+}
+
+@media (min-width: 861px) {
+  .show-sm { display: none !important; }
+}
+
+/* ---- Spinner -------------------------------------------------------------
+   Applied to a lucide <Loader2>; every pending button uses this one class. */
+.spin { animation: spin 0.85s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

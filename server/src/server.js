@@ -74,7 +74,14 @@ app.get("/", (req, res) => {
     status: "Online",
     database: dbAdapter.isPostgres ? "PostgreSQL (Render Managed)" : "In-Memory / Local",
     clientsSupported: ["Web (React/Vite)", "Mobile (React Native/Expo)"],
-    modules: ["CampusConnect", "CampusBid", "CampusRide & Events", "CampusNearby"],
+    modules: [
+      "CampusConnect",
+      "CampusBid & Marketplace",
+      "CampusSkills",
+      "CampusTasks",
+      "CampusRide & Events",
+      "CampusNearby"
+    ],
     docs: "/docs/architecture.md"
   });
 });
