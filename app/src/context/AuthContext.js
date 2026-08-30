@@ -6,9 +6,10 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [onboarded, setOnboarded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore existing session from SecureStore on startup
+  // Restore existing session from storage on startup
   useEffect(() => {
     const restoreSession = async () => {
       try {
@@ -18,6 +19,7 @@ export const AuthProvider = ({ children }) => {
         if (storedToken && storedUser) {
           setToken(storedToken);
           setUser(storedUser);
+          setOnboarded(true);
         }
       } catch (err) {
         console.warn("[AuthContext] Failed to restore session:", err);
@@ -36,10 +38,15 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const enterCampus = () => {
+    setOnboarded(true);
+  };
+
   const logout = async () => {
     await authService.clearSession();
     setToken(null);
     setUser(null);
+    setOnboarded(false);
   };
 
   const refreshProfile = async () => {
@@ -60,8 +67,10 @@ export const AuthProvider = ({ children }) => {
         user,
         token,
         isAuthenticated: Boolean(token && user),
+        onboarded,
         isLoading,
         login,
+        enterCampus,
         logout,
         refreshProfile
       }}

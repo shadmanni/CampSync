@@ -100,7 +100,7 @@ function AuthStackNavigator() {
 }
 
 export const AppNavigator = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, onboarded, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -112,7 +112,7 @@ export const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainTabNavigator /> : <AuthStackNavigator />}
+      {isAuthenticated && onboarded ? <MainTabNavigator /> : <AuthStackNavigator />}
     </NavigationContainer>
   );
 };

@@ -1,5 +1,5 @@
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "./storage";
 import { Platform } from "react-native";
 
 // In development, default to localhost on Web or local network IP / emulator host on Android
@@ -7,7 +7,6 @@ const getBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  // Android Emulator maps 10.0.2.2 to host machine localhost
   if (Platform.OS === "android") {
     return "http://10.0.2.2:5000/api";
   }
@@ -23,16 +22,16 @@ const api = axios.create({
   }
 });
 
-// Request Interceptor: inject Bearer token from SecureStore if present
+// Request Interceptor: inject Bearer token from secure storage if present
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await SecureStore.getItemAsync("campussync_jwt");
+      const token = await storage.getItem("campussync_jwt");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (err) {
-      console.warn("[API] Failed to retrieve token from SecureStore:", err);
+      console.warn("[API] Failed to retrieve token from storage:", err);
     }
     return config;
   },

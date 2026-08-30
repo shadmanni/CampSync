@@ -7,7 +7,7 @@ import { GlassCard } from "../../components/common/GlassCard";
 import { PrimaryButton } from "../../components/common/PrimaryButton";
 
 export const VerifiedDoneScreen = ({ navigation }) => {
-  const { user } = useAuth();
+  const { user, enterCampus } = useAuth();
 
   return (
     <View style={styles.container}>
@@ -57,7 +57,7 @@ export const VerifiedDoneScreen = ({ navigation }) => {
         <PrimaryButton
           title="Enter Campus Hub"
           onPress={() => {
-            // Root navigator will automatically switch to MainTabs due to AuthContext isAuthenticated
+            enterCampus();
           }}
           icon={<ArrowRight size={18} color={colors.textMain} />}
           style={styles.continueBtn}

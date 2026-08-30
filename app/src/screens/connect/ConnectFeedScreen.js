@@ -66,6 +66,15 @@ export const ConnectFeedScreen = ({ navigation }) => {
       setPosts((prevPosts) => {
         // Prevent duplicate addition
         if (prevPosts.some((p) => p.id === newPost.id)) return prevPosts;
+
+        // Check if category matches currently selected filter
+        if (
+          selectedCategory !== "All" &&
+          selectedCategory.toLowerCase() !== newPost.category?.toLowerCase()
+        ) {
+          return prevPosts;
+        }
+
         return [newPost, ...prevPosts];
       });
     };
@@ -74,7 +83,7 @@ export const ConnectFeedScreen = ({ navigation }) => {
     return () => {
       socketService.off("connect:new_post", handleNewPost);
     };
-  }, []);
+  }, [selectedCategory]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -261,7 +270,12 @@ export const ConnectFeedScreen = ({ navigation }) => {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onCreated={(newPost) => {
-          setPosts((prev) => [newPost, ...prev]);
+          if (
+            selectedCategory === "All" ||
+            selectedCategory.toLowerCase() === newPost.category?.toLowerCase()
+          ) {
+            setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]));
+          }
         }}
       />
     </View>

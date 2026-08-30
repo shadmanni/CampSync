@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import { storage } from "./storage";
 import api from "./api";
 
 const TOKEN_KEY = "campussync_jwt";
@@ -27,32 +27,32 @@ export const authService = {
     return await api.get("/auth/me");
   },
 
-  // 4. Secure Storage Helpers (using expo-secure-store exclusively)
+  // 4. Secure Storage Helpers
   async saveToken(token) {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    await storage.setItem(TOKEN_KEY, token);
   },
 
   async getToken() {
-    return await SecureStore.getItemAsync(TOKEN_KEY);
+    return await storage.getItem(TOKEN_KEY);
   },
 
   async removeToken() {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await storage.deleteItem(TOKEN_KEY);
   },
 
   async saveUser(user) {
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    await storage.setItem(USER_KEY, JSON.stringify(user));
   },
 
   async getUser() {
-    const raw = await SecureStore.getItemAsync(USER_KEY);
+    const raw = await storage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) : null;
   },
 
   async clearSession() {
     await Promise.all([
-      SecureStore.deleteItemAsync(TOKEN_KEY),
-      SecureStore.deleteItemAsync(USER_KEY)
+      storage.deleteItem(TOKEN_KEY),
+      storage.deleteItem(USER_KEY)
     ]);
   }
 };
