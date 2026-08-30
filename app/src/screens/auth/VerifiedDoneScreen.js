@@ -1,10 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { ShieldCheck, Check, ArrowRight, Award, Sparkles } from "lucide-react-native";
-import { colors, radii, spacing, typography } from "../../theme/theme";
+import { ShieldCheck, Check, ArrowRight } from "lucide-react-native";
+import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { useAuth } from "../../context/AuthContext";
-import { GlassCard } from "../../components/common/GlassCard";
-import { PrimaryButton } from "../../components/common/PrimaryButton";
+import { PopCard } from "../../components/common/PopCard";
+import { PopButton } from "../../components/common/PopButton";
+import { PopAvatar } from "../../components/common/PopAvatar";
 
 export const VerifiedDoneScreen = () => {
   const { user, enterCampus } = useAuth();
@@ -12,11 +13,11 @@ export const VerifiedDoneScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* Animated Badge Icon */}
+        {/* Badge Icon */}
         <View style={styles.badgeWrapper}>
-          <ShieldCheck size={56} color={colors.accentEmerald} />
+          <ShieldCheck size={52} color={colors.mint} />
           <View style={styles.checkPill}>
-            <Check size={16} color={colors.textInverse} />
+            <Check size={14} color="#FFFFFF" />
           </View>
         </View>
 
@@ -26,13 +27,9 @@ export const VerifiedDoneScreen = () => {
         </Text>
 
         {/* Student Profile Card */}
-        <GlassCard style={styles.profileCard} variant="highlight">
+        <PopCard style={styles.profileCard}>
           <View style={styles.profileHeader}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarLetter}>
-                {user?.name ? user.name.charAt(0).toUpperCase() : "S"}
-              </Text>
-            </View>
+            <PopAvatar name={user?.name || "Alex Rivera"} size={48} accentColor={colors.violet} />
             <View style={styles.profileMeta}>
               <Text style={styles.userName}>{user?.name || "Alex Rivera"}</Text>
               <Text style={styles.userEmail}>{user?.email || "alex.tech@college.edu"}</Text>
@@ -48,16 +45,18 @@ export const VerifiedDoneScreen = () => {
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>STATUS</Text>
-              <Text style={[styles.detailValue, { color: colors.accentEmerald }]}>Active & Verified</Text>
+              <Text style={[styles.detailValue, { color: colors.mint }]}>Active & Verified</Text>
             </View>
           </View>
-        </GlassCard>
+        </PopCard>
 
         {/* Continue Button */}
-        <PrimaryButton
+        <PopButton
           title="Enter Campus Hub"
           onPress={enterCampus}
-          icon={<ArrowRight size={18} color={colors.textInverse} />}
+          variant="violet"
+          size="lg"
+          icon={<ArrowRight size={18} color="#FFFFFF" />}
           style={styles.continueBtn}
         />
       </View>
@@ -68,7 +67,7 @@ export const VerifiedDoneScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: colors.canvas,
     justifyContent: "center",
     padding: spacing.containerPadding
   },
@@ -76,12 +75,13 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   badgeWrapper: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    backgroundColor: colors.accentEmeraldLight,
-    borderWidth: 3,
-    borderColor: "rgba(16, 185, 129, 0.3)",
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.mintSoft,
+    borderWidth: 2,
+    borderColor: colors.lineStrong,
+    ...shadows.hard,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.lg
@@ -90,65 +90,52 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 2,
     right: 4,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.accentEmerald,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.mint,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong
   },
   title: {
     ...typography.h1,
-    color: colors.primary,
     textAlign: "center",
     marginBottom: spacing.xs
   },
   subtitle: {
     ...typography.body,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 20,
     marginBottom: spacing.xl,
     paddingHorizontal: spacing.sm
   },
   profileCard: {
     width: "100%",
-    padding: spacing.lg,
     marginBottom: spacing.xl
   },
   profileHeader: {
     flexDirection: "row",
-    alignItems: "center"
-  },
-  avatarCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.primary,
     alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing.md
-  },
-  avatarLetter: {
-    ...typography.h2,
-    color: colors.textInverse,
-    fontSize: 22
+    gap: 12
   },
   profileMeta: {
     flex: 1
   },
   userName: {
     ...typography.h3,
-    color: colors.primary,
     fontSize: 18
   },
   userEmail: {
     ...typography.bodySm,
-    color: colors.primaryLight,
+    color: colors.violet,
+    fontWeight: "700",
     marginTop: 2
   },
   divider: {
-    height: 1,
-    backgroundColor: colors.borderGlass,
+    height: 1.5,
+    backgroundColor: colors.line,
     marginVertical: spacing.md
   },
   detailsGrid: {
@@ -161,14 +148,14 @@ const styles = StyleSheet.create({
   detailLabel: {
     ...typography.bodySm,
     fontSize: 10,
-    color: colors.textSubtle,
-    fontWeight: "700",
+    color: colors.inkFaint,
+    fontWeight: "800",
     letterSpacing: 0.5,
     marginBottom: 4
   },
   detailValue: {
     ...typography.body,
-    color: colors.textMain,
+    color: colors.ink,
     fontWeight: "700"
   },
   continueBtn: {

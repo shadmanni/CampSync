@@ -13,15 +13,13 @@ import {
   ArrowLeft,
   ThumbsUp,
   MessageSquare,
-  Send,
-  User,
-  Shield,
-  Share2
+  Send
 } from "lucide-react-native";
-import { colors, radii, spacing, typography } from "../../theme/theme";
+import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { connectService } from "../../services/connectService";
 import { useAuth } from "../../context/AuthContext";
-import { GlassCard } from "../../components/common/GlassCard";
+import { PopCard } from "../../components/common/PopCard";
+import { PopAvatar } from "../../components/common/PopAvatar";
 
 export const PostDetailScreen = ({ route, navigation }) => {
   const { post: initialPost } = route.params;
@@ -68,40 +66,35 @@ export const PostDetailScreen = ({ route, navigation }) => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      {/* Top Header */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          <ArrowLeft size={20} color={colors.primary} />
+          <ArrowLeft size={18} color={colors.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Discussion Thread</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 38 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Main Post Card */}
-        <GlassCard style={styles.mainPostCard}>
+        <PopCard style={styles.mainCard}>
           <View style={styles.authorRow}>
-            <View style={[styles.avatar, post.isAnonymous && styles.avatarAnon]}>
-              {post.isAnonymous ? (
-                <Shield size={18} color={colors.textSubtle} />
-              ) : (
-                <Text style={styles.avatarLetter}>
-                  {(post.authorName || "S").charAt(0).toUpperCase()}
-                </Text>
-              )}
-            </View>
+            <PopAvatar
+              name={post.authorName || "Verified Student"}
+              anonymous={post.isAnonymous}
+              size={42}
+              accentColor={colors.violet}
+            />
             <View style={styles.authorMeta}>
-              <Text style={styles.authorName}>
-                {post.authorName || "Verified Student"}
-              </Text>
+              <Text style={styles.authorName}>{post.authorName || "Verified Student"}</Text>
               <Text style={styles.timeText}>{post.createdAt || "Recently"}</Text>
             </View>
-            <View style={styles.categoryTag}>
-              <Text style={styles.categoryTagText}>{post.category || "General"}</Text>
+            <View style={styles.tagBadge}>
+              <Text style={styles.tagText}>{post.category || "General"}</Text>
             </View>
           </View>
 
@@ -114,53 +107,47 @@ export const PostDetailScreen = ({ route, navigation }) => {
               onPress={handleUpvote}
               activeOpacity={0.7}
             >
-              <ThumbsUp size={16} color={colors.primary} />
+              <ThumbsUp size={15} color={colors.violet} />
               <Text style={styles.upvoteText}>{post.upvotes || 0} upvotes</Text>
             </TouchableOpacity>
 
-            <View style={styles.commentsCountRow}>
-              <MessageSquare size={16} color={colors.textSubtle} />
-              <Text style={styles.commentsCountText}>{comments.length} replies</Text>
+            <View style={styles.replyCounter}>
+              <MessageSquare size={15} color={colors.inkFaint} />
+              <Text style={styles.replyCounterText}>{comments.length} replies</Text>
             </View>
           </View>
-        </GlassCard>
+        </PopCard>
 
-        {/* Section Title */}
-        <Text style={styles.sectionTitle}>Responses ({comments.length})</Text>
+        {/* Section Heading */}
+        <Text style={styles.sectionHeading}>Responses ({comments.length})</Text>
 
         {/* Comments List */}
         {comments.length === 0 ? (
-          <GlassCard style={styles.emptyComments}>
-            <Text style={styles.emptyCommentsText}>
-              No replies yet. Be the first to join the conversation!
-            </Text>
-          </GlassCard>
+          <PopCard style={styles.emptyComments} variant="inset">
+            <Text style={styles.emptyText}>No replies yet. Be the first to share your thoughts!</Text>
+          </PopCard>
         ) : (
           comments.map((c, idx) => (
-            <GlassCard key={c.id || idx} style={styles.commentCard}>
+            <PopCard key={c.id || idx} style={styles.commentCard}>
               <View style={styles.commentHeader}>
-                <View style={styles.commentAvatar}>
-                  <Text style={styles.commentAvatarLetter}>
-                    {(c.authorName || "S").charAt(0).toUpperCase()}
-                  </Text>
-                </View>
+                <PopAvatar name={c.authorName || "Student"} size={30} accentColor={colors.violet} />
                 <View style={styles.commentMeta}>
                   <Text style={styles.commentAuthor}>{c.authorName || "Student"}</Text>
                   <Text style={styles.commentTime}>{c.createdAt || "Recently"}</Text>
                 </View>
               </View>
               <Text style={styles.commentBody}>{c.content}</Text>
-            </GlassCard>
+            </PopCard>
           ))
         )}
       </ScrollView>
 
-      {/* Sticky Bottom Comment Composer */}
-      <View style={styles.composerContainer}>
+      {/* Comment Input Composer */}
+      <View style={styles.composerWrapper}>
         <TextInput
           style={styles.composerInput}
-          placeholder="Write a reply or answer..."
-          placeholderTextColor={colors.textSubtle}
+          placeholder="Share your thoughts or answer..."
+          placeholderTextColor={colors.inkFaint}
           value={newComment}
           onChangeText={setNewComment}
           multiline
@@ -169,9 +156,9 @@ export const PostDetailScreen = ({ route, navigation }) => {
           style={[styles.sendBtn, !newComment.trim() && styles.sendBtnDisabled]}
           onPress={handleAddComment}
           disabled={!newComment.trim() || submitting}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          <Send size={18} color={colors.textInverse} />
+          <Send size={16} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -181,213 +168,193 @@ export const PostDetailScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary
+    backgroundColor: colors.canvas
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.containerPadding,
+    paddingHorizontal: 16,
     paddingTop: 50,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.bgSurface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderGlass
+    paddingBottom: 14,
+    backgroundColor: colors.canvas,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.lineStrong
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.bgDim,
+    width: 38,
+    height: 38,
+    borderRadius: radii.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    ...shadows.hardSm
   },
   headerTitle: {
     ...typography.h3,
-    color: colors.primary
+    fontSize: 18
   },
   scrollContent: {
-    padding: spacing.containerPadding,
+    padding: 16,
     paddingBottom: 100
   },
-  mainPostCard: {
-    padding: spacing.lg,
-    marginBottom: spacing.lg
+  mainCard: {
+    marginBottom: 16
   },
   authorRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: spacing.md
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.bgDim,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing.sm
-  },
-  avatarAnon: {
-    backgroundColor: colors.bgSubtle
-  },
-  avatarLetter: {
-    color: colors.primary,
-    fontWeight: "700",
-    fontSize: 16
+    gap: 12,
+    marginBottom: 12
   },
   authorMeta: {
     flex: 1
   },
   authorName: {
     ...typography.label,
-    fontSize: 15,
-    color: colors.textPrimary
+    fontSize: 15
   },
   timeText: {
     ...typography.bodySm,
-    color: colors.textSubtle,
+    color: colors.inkFaint,
     fontSize: 11
   },
-  categoryTag: {
-    backgroundColor: colors.bgDim,
+  tagBadge: {
+    backgroundColor: colors.violetSoft,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: radii.full
   },
-  categoryTagText: {
+  tagText: {
     ...typography.bodySm,
-    color: colors.primary,
-    fontWeight: "700",
+    color: colors.violet,
+    fontWeight: "800",
     fontSize: 11
   },
   postTitle: {
     ...typography.h2,
-    fontSize: 20,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm
+    fontSize: 19,
+    marginBottom: 6
   },
   postBody: {
     ...typography.bodyLg,
-    color: colors.textPrimary,
-    lineHeight: 24,
-    marginBottom: spacing.lg
+    color: colors.ink,
+    lineHeight: 22,
+    marginBottom: 16
   },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
-    paddingTop: spacing.md
+    gap: 16,
+    borderTopWidth: 1.5,
+    borderTopColor: colors.line,
+    paddingTop: 12
   },
   upvoteBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: colors.bgDim,
+    backgroundColor: colors.violetSoft,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: radii.full
+    borderRadius: radii.full,
+    ...shadows.hardSm
   },
   upvoteText: {
     ...typography.bodySm,
-    color: colors.primary,
-    fontWeight: "700"
+    color: colors.violet,
+    fontWeight: "800"
   },
-  commentsCountRow: {
+  replyCounter: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6
   },
-  commentsCountText: {
+  replyCounterText: {
     ...typography.bodySm,
-    color: colors.textSubtle
+    color: colors.inkFaint
   },
-  sectionTitle: {
+  sectionHeading: {
     ...typography.label,
     fontSize: 15,
-    marginBottom: spacing.md,
-    color: colors.primary
+    marginBottom: 12,
+    color: colors.ink
   },
   emptyComments: {
-    padding: spacing.lg,
+    padding: 16,
     alignItems: "center"
   },
-  emptyCommentsText: {
+  emptyText: {
     ...typography.body,
     textAlign: "center"
   },
   commentCard: {
-    marginBottom: spacing.sm,
-    padding: spacing.md
+    marginBottom: 10,
+    padding: 12
   },
   commentHeader: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
     marginBottom: 6
-  },
-  commentAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing.sm
-  },
-  commentAvatarLetter: {
-    color: colors.textInverse,
-    fontSize: 12,
-    fontWeight: "700"
   },
   commentMeta: {
     flex: 1
   },
   commentAuthor: {
     ...typography.label,
-    fontSize: 13,
-    color: colors.textPrimary
+    fontSize: 13
   },
   commentTime: {
     ...typography.bodySm,
-    color: colors.textSubtle,
+    color: colors.inkFaint,
     fontSize: 10
   },
   commentBody: {
     ...typography.body,
-    color: colors.textPrimary,
-    lineHeight: 20
+    color: colors.ink,
+    lineHeight: 19
   },
-  composerContainer: {
+  composerWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.containerPadding,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.bgSurface,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderGlass
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.canvas,
+    borderTopWidth: 1.5,
+    borderTopColor: colors.lineStrong
   },
   composerInput: {
     flex: 1,
-    backgroundColor: colors.bgSubtle,
+    backgroundColor: colors.surface,
     borderRadius: radii.full,
-    borderWidth: 1,
-    borderColor: colors.borderGlass,
-    paddingHorizontal: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    color: colors.textPrimary,
-    maxHeight: 90,
-    fontSize: 14
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: "600",
+    maxHeight: 80,
+    ...shadows.hardSm
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.secondary, // Warm Orange #FF6F3C
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.violet,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: spacing.sm
+    marginLeft: 8,
+    ...shadows.hardSm
   },
   sendBtnDisabled: {
     opacity: 0.4

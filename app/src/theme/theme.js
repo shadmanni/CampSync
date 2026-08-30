@@ -1,46 +1,97 @@
 /**
- * CampusSync Theme Tokens
- * Faithfully matches Stitch UI Design System (DESIGN.md).
+ * CampusSync — Campus Pop Theme Tokens (Mobile)
+ * Maps 1:1 with client/src/styles/tokens.css (Light Mode).
  */
 
 export const colors = {
-  // Backgrounds & Canvas
-  bgPrimary: "#F9F9FB",         // Soft editorial canvas
-  bgSurface: "#FFFFFF",         // Pure White floating cards
-  bgSurfaceSolid: "#FFFFFF",
-  bgGlass: "#FFFFFF",
-  bgSubtle: "#F4F2FD",
-  bgDim: "#EDE8FA",            // Soft indigo tint
+  // Surfaces & Canvas (Warm Cream & Pure White)
+  canvas: "#FDFBF5",
+  canvasTint: "#F6F1E4",
+  surface: "#FFFFFF",
+  surface2: "#FBF8F1",
+  surfaceInset: "#F3EFE4",
 
-  // Brand Primaries (Deep Indigo)
-  primary: "#2D1B69",           // Deep Indigo for primary actions/headers
-  primaryHeader: "#180052",     // Darker Indigo for hero banners
-  primaryLight: "#4A3A87",
-  primaryTint: "rgba(45, 27, 105, 0.08)",
+  // Inks & Typography (Rich Espresso / Charcoal)
+  ink: "#17150F",
+  inkSoft: "#58524A",
+  inkFaint: "#8E877A",
+  inkInvert: "#FDFBF5",
 
-  // Brand Accents (Warm Orange & Functionals)
-  secondary: "#FF6F3C",         // Warm Orange primary action CTA
-  accentOrange: "#FF6F3C",
-  accentOrangeLight: "#FFF0EB",
-  accentCyan: "#06B6D4",
-  accentEmerald: "#10B981",
-  accentEmeraldLight: "rgba(16, 185, 129, 0.12)",
-  accentAmber: "#F59E0B",
-  accentRose: "#BA1A1A",
-  accentRoseLight: "#FFDAD6",
+  // Lines & Borders (1.5px solid ink borders)
+  line: "rgba(23, 21, 15, 0.12)",
+  lineStrong: "#17150F",
+  lineLight: "rgba(23, 21, 15, 0.08)",
 
-  // Borders & Outlines
-  borderGlass: "rgba(0, 0, 0, 0.08)",
-  borderSubtle: "rgba(0, 0, 0, 0.04)",
-  borderHighlight: "rgba(45, 27, 105, 0.25)",
-  outline: "#CAC4D2",
+  // Module Identity Accents (Campus Pop)
+  violet: "#6E56F8",
+  violetSoft: "#EEEAFF",
 
-  // Typography
-  textPrimary: "#1A1A1A",
-  textMain: "#1A1C1D",
-  textMuted: "#484550",
-  textSubtle: "#797582",
-  textInverse: "#FFFFFF"
+  coral: "#FF6B35",
+  coralSoft: "#FFEDE5",
+
+  mint: "#12B886",
+  mintSoft: "#E1F8F0",
+
+  sky: "#0EA5E9",
+  skySoft: "#E2F4FE",
+
+  sun: "#FFB703",
+  sunSoft: "#FFF4D9",
+
+  rose: "#F43F5E",
+  roseSoft: "#FFE8EC",
+
+  // Default Accent (Violet for App Foundation)
+  primary: "#6E56F8",
+  primarySoft: "#EEEAFF",
+  secondary: "#FF6B35",
+
+  // Functionals
+  success: "#12B886",
+  warning: "#FFB703",
+  danger: "#F43F5E",
+
+  // Aliases for compatibility
+  bgPrimary: "#FDFBF5",
+  bgSurface: "#FFFFFF",
+  textPrimary: "#17150F",
+  textMain: "#17150F",
+  textMuted: "#58524A",
+  textSubtle: "#8E877A",
+  borderGlass: "rgba(23, 21, 15, 0.12)"
+};
+
+export const shadows = {
+  hard: {
+    shadowColor: "#17150F",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.9,
+    shadowRadius: 0,
+    elevation: 4
+  },
+  hardSm: {
+    shadowColor: "#17150F",
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.9,
+    shadowRadius: 0,
+    elevation: 2
+  },
+  hardLg: {
+    shadowColor: "#17150F",
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.9,
+    shadowRadius: 0,
+    elevation: 6
+  }
+};
+
+export const radii = {
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 22,
+  xl: 30,
+  full: 999
 };
 
 export const spacing = {
@@ -49,25 +100,16 @@ export const spacing = {
   md: 16,
   lg: 24,
   xl: 32,
-  xxl: 48,
-  containerPadding: 20
-};
-
-export const radii = {
-  sm: 8,
-  md: 14,
-  lg: 20,
-  xl: 28,
-  full: 9999
+  containerPadding: 16
 };
 
 export const typography = {
-  h1: { fontSize: 28, fontWeight: "700", color: colors.textMain, letterSpacing: -0.5 },
-  h2: { fontSize: 22, fontWeight: "700", color: colors.textMain, letterSpacing: -0.3 },
-  h3: { fontSize: 18, fontWeight: "600", color: colors.textMain },
-  bodyLg: { fontSize: 16, fontWeight: "400", color: colors.textMain, lineHeight: 24 },
-  body: { fontSize: 14, fontWeight: "400", color: colors.textMuted, lineHeight: 20 },
-  bodySm: { fontSize: 12, fontWeight: "400", color: colors.textSubtle, lineHeight: 16 },
-  label: { fontSize: 13, fontWeight: "600", color: colors.textMain },
-  badge: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }
+  h1: { fontSize: 26, fontWeight: "800", color: colors.ink, letterSpacing: -0.5 },
+  h2: { fontSize: 21, fontWeight: "800", color: colors.ink, letterSpacing: -0.3 },
+  h3: { fontSize: 17, fontWeight: "700", color: colors.ink },
+  bodyLg: { fontSize: 15, fontWeight: "500", color: colors.ink, lineHeight: 22 },
+  body: { fontSize: 14, fontWeight: "400", color: colors.inkSoft, lineHeight: 20 },
+  bodySm: { fontSize: 12, fontWeight: "500", color: colors.inkFaint, lineHeight: 16 },
+  label: { fontSize: 13, fontWeight: "700", color: colors.ink },
+  badge: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4 }
 };

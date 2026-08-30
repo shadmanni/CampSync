@@ -1,11 +1,18 @@
 import React from "react";
-import { View, ActivityIndicator, StyleSheet, Platform } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Platform, Text } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { MessageSquare, Gavel, Car, Compass, User } from "lucide-react-native";
+import {
+  MessageSquare,
+  Gavel,
+  Car,
+  Compass,
+  Sparkles,
+  CheckSquare
+} from "lucide-react-native";
 
-import { colors, radii, spacing, typography } from "../theme/theme";
+import { colors, radii, shadows, spacing, typography } from "../theme/theme";
 import { useAuth } from "../context/AuthContext";
 
 // Auth Screens
@@ -19,6 +26,8 @@ import { PostDetailScreen } from "../screens/connect/PostDetailScreen";
 import { BidBrowseScreen } from "../screens/bid/BidBrowseScreen";
 import { RideListScreen } from "../screens/ride/RideListScreen";
 import { NearbyFeedScreen } from "../screens/nearby/NearbyFeedScreen";
+import { SkillsFeedScreen } from "../screens/skills/SkillsFeedScreen";
+import { TasksFeedScreen } from "../screens/tasks/TasksFeedScreen";
 import { ProfileScreen } from "../screens/profile/ProfileScreen";
 
 const Stack = createNativeStackNavigator();
@@ -30,15 +39,16 @@ function ConnectStackNavigator() {
     <ConnectStack.Navigator screenOptions={{ headerShown: false }}>
       <ConnectStack.Screen name="ConnectFeed" component={ConnectFeedScreen} />
       <ConnectStack.Screen name="PostDetail" component={PostDetailScreen} />
+      <ConnectStack.Screen name="Profile" component={ProfileScreen} />
     </ConnectStack.Navigator>
   );
 }
 
-function TabIcon({ Icon, color, focused }) {
+function TabIcon({ Icon, color, focused, activeColor }) {
   return (
     <View style={styles.tabIconWrapper}>
-      <Icon color={color} size={22} />
-      {focused && <View style={styles.activeDot} />}
+      <Icon color={focused ? activeColor : colors.inkFaint} size={20} strokeWidth={focused ? 2.6 : 2} />
+      {focused && <View style={[styles.activeDot, { backgroundColor: activeColor }]} />}
     </View>
   );
 }
@@ -49,8 +59,8 @@ function MainTabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: colors.primary, // Deep Indigo
-        tabBarInactiveTintColor: colors.textSubtle,
+        tabBarActiveTintColor: colors.ink,
+        tabBarInactiveTintColor: colors.inkFaint,
         tabBarLabelStyle: styles.tabLabel
       }}
     >
@@ -59,8 +69,8 @@ function MainTabNavigator() {
         component={ConnectStackNavigator}
         options={{
           tabBarLabel: "Connect",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon Icon={MessageSquare} color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={MessageSquare} focused={focused} activeColor={colors.violet} />
           )
         }}
       />
@@ -69,8 +79,8 @@ function MainTabNavigator() {
         component={BidBrowseScreen}
         options={{
           tabBarLabel: "Bid",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon Icon={Gavel} color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={Gavel} focused={focused} activeColor={colors.coral} />
           )
         }}
       />
@@ -79,8 +89,8 @@ function MainTabNavigator() {
         component={RideListScreen}
         options={{
           tabBarLabel: "Ride",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon Icon={Car} color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={Car} focused={focused} activeColor={colors.mint} />
           )
         }}
       />
@@ -89,18 +99,28 @@ function MainTabNavigator() {
         component={NearbyFeedScreen}
         options={{
           tabBarLabel: "Nearby",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon Icon={Compass} color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={Compass} focused={focused} activeColor={colors.sky} />
           )
         }}
       />
       <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="Skills"
+        component={SkillsFeedScreen}
         options={{
-          tabBarLabel: "Profile",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon Icon={User} color={color} focused={focused} />
+          tabBarLabel: "Skills",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={Sparkles} focused={focused} activeColor={colors.rose} />
+          )
+        }}
+      />
+      <Tab.Screen
+        name="Tasks"
+        component={TasksFeedScreen}
+        options={{
+          tabBarLabel: "Tasks",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={CheckSquare} focused={focused} activeColor={colors.sun} />
           )
         }}
       />
@@ -124,7 +144,7 @@ export const AppNavigator = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.violet} />
       </View>
     );
   }
@@ -139,39 +159,34 @@ export const AppNavigator = () => {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: colors.canvas,
     alignItems: "center",
     justifyContent: "center"
   },
   tabBar: {
-    backgroundColor: colors.bgSurface,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderGlass,
-    height: Platform.OS === "ios" ? 84 : 66,
-    paddingBottom: Platform.OS === "ios" ? 22 : 8,
-    paddingTop: 8,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 8
+    backgroundColor: colors.surface,
+    borderTopWidth: 2,
+    borderTopColor: colors.lineStrong,
+    height: Platform.OS === "ios" ? 86 : 68,
+    paddingBottom: Platform.OS === "ios" ? 24 : 8,
+    paddingTop: 6,
+    ...shadows.hardLg
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "800",
     marginTop: 2
   },
   tabIconWrapper: {
     alignItems: "center",
     justifyContent: "center",
-    height: 28
+    height: 26
   },
   activeDot: {
     position: "absolute",
     bottom: -6,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.secondary // Warm Orange #FF6F3C
+    width: 5,
+    height: 5,
+    borderRadius: 2.5
   }
 });

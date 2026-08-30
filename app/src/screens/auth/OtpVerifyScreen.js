@@ -6,14 +6,15 @@ import {
   StyleSheet,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ScrollView
 } from "react-native";
 import { KeyRound, ArrowLeft, RotateCcw, Check, Sparkles } from "lucide-react-native";
-import { colors, radii, spacing, typography } from "../../theme/theme";
+import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
 import { useAuth } from "../../context/AuthContext";
 import { authService } from "../../services/authService";
-import { GlassCard } from "../../components/common/GlassCard";
-import { PrimaryButton } from "../../components/common/PrimaryButton";
+import { PopCard } from "../../components/common/PopCard";
+import { PopButton } from "../../components/common/PopButton";
 
 export const OtpVerifyScreen = ({ route, navigation }) => {
   const { email, demoNotice } = route.params;
@@ -66,38 +67,40 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <View style={styles.headerRow}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={20} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verification Code</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        {/* Header */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.8}
+          >
+            <ArrowLeft size={18} color={colors.ink} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Verify OTP</Text>
+          <View style={{ width: 38 }} />
+        </View>
 
-      <View style={styles.content}>
-        <GlassCard style={styles.card}>
-          <View style={styles.iconWrapper}>
-            <KeyRound size={28} color={colors.primary} />
+        {/* Card */}
+        <PopCard style={styles.card}>
+          <View style={styles.iconCircle}>
+            <KeyRound size={26} color={colors.violet} />
           </View>
 
           <Text style={styles.title}>Enter 6-Digit Code</Text>
           <Text style={styles.subtitle}>
-            We've sent a 6-digit OTP code to:{"\n"}
+            We've sent a verification code to{"\n"}
             <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
 
           {demoNotice ? (
             <View style={styles.demoNoticeBox}>
-              <Sparkles size={14} color={colors.primary} />
+              <Sparkles size={14} color={colors.violet} />
               <Text style={styles.demoNoticeText}>{demoNotice}</Text>
             </View>
           ) : null}
 
-          {/* OTP Input Field */}
+          {/* OTP Input */}
           <TextInput
             style={styles.otpInput}
             value={otp}
@@ -108,17 +111,18 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
             keyboardType="number-pad"
             maxLength={6}
             placeholder="000000"
-            placeholderTextColor={colors.textSubtle}
+            placeholderTextColor={colors.inkFaint}
           />
 
           {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
-          {/* Verify Button */}
-          <PrimaryButton
+          <PopButton
             title="Verify & Enter Campus"
             onPress={handleVerifyOtp}
             loading={loading}
-            icon={<Check size={18} color={colors.textInverse} />}
+            variant="violet"
+            size="lg"
+            icon={<Check size={18} color="#FFFFFF" />}
             style={styles.verifyBtn}
           />
 
@@ -132,15 +136,15 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
               <TouchableOpacity
                 onPress={handleResend}
                 style={styles.resendBtn}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
               >
-                <RotateCcw size={14} color={colors.secondary} />
+                <RotateCcw size={14} color={colors.violet} />
                 <Text style={styles.resendText}>Resend OTP Code</Text>
               </TouchableOpacity>
             )}
           </View>
-        </GlassCard>
-      </View>
+        </PopCard>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
@@ -148,114 +152,119 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary
+    backgroundColor: colors.canvas
+  },
+  scrollContent: {
+    padding: spacing.containerPadding,
+    paddingTop: 50,
+    flexGrow: 1
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.containerPadding,
-    paddingTop: 50,
-    paddingBottom: spacing.sm
+    marginBottom: spacing.lg
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.bgDim,
+    width: 38,
+    height: 38,
+    borderRadius: radii.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    ...shadows.hardSm
   },
   headerTitle: {
     ...typography.h3,
-    color: colors.primary
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    padding: spacing.containerPadding
+    fontSize: 18
   },
   card: {
-    padding: spacing.xl,
-    alignItems: "center"
+    alignItems: "center",
+    padding: spacing.xl
   },
-  iconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.bgDim,
+  iconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: colors.violetSoft,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md
   },
   title: {
     ...typography.h2,
-    color: colors.primary,
-    textAlign: "center",
-    marginBottom: spacing.xs
+    fontSize: 22,
+    marginBottom: 4,
+    textAlign: "center"
   },
   subtitle: {
     ...typography.body,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 20,
     marginBottom: spacing.lg
   },
   emailHighlight: {
-    color: colors.primary,
-    fontWeight: "700"
+    color: colors.ink,
+    fontWeight: "800"
   },
   demoNoticeBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: colors.bgDim,
+    backgroundColor: colors.violetSoft,
     borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     marginBottom: spacing.lg,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
     width: "100%"
   },
   demoNoticeText: {
     ...typography.bodySm,
-    color: colors.primary,
-    flex: 1,
-    fontWeight: "600"
+    color: colors.violet,
+    fontWeight: "700",
+    flex: 1
   },
   otpInput: {
     width: "100%",
     height: 58,
-    backgroundColor: colors.bgSubtle,
+    backgroundColor: colors.surfaceInset,
     borderRadius: radii.md,
     borderWidth: 1.5,
-    borderColor: colors.borderHighlight,
+    borderColor: colors.lineStrong,
     textAlign: "center",
     fontSize: 28,
-    letterSpacing: 10,
-    fontWeight: "700",
-    color: colors.primary,
+    letterSpacing: 8,
+    fontWeight: "900",
+    color: colors.ink,
     marginBottom: spacing.md
   },
   errorText: {
     ...typography.bodySm,
-    color: colors.accentRose,
+    color: colors.danger,
+    fontWeight: "700",
     marginBottom: spacing.md,
-    fontWeight: "600",
     textAlign: "center"
   },
   verifyBtn: {
     width: "100%",
-    marginBottom: spacing.lg
+    marginBottom: spacing.md
   },
   resendRow: {
     alignItems: "center"
   },
   timerText: {
     ...typography.bodySm,
-    color: colors.textSubtle
+    color: colors.inkFaint
   },
   timerCount: {
-    color: colors.secondary,
-    fontWeight: "700"
+    color: colors.violet,
+    fontWeight: "800"
   },
   resendBtn: {
     flexDirection: "row",
@@ -264,7 +273,7 @@ const styles = StyleSheet.create({
   },
   resendText: {
     ...typography.bodySm,
-    color: colors.secondary,
-    fontWeight: "700"
+    color: colors.violet,
+    fontWeight: "800"
   }
 });

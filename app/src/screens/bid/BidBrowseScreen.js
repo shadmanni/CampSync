@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  RefreshControl,
   TextInput,
-  Image
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView
 } from "react-native";
 import {
   Gavel,
@@ -15,141 +19,172 @@ import {
   Clock,
   TrendingUp,
   Tag,
-  Sparkles
+  CheckCircle2,
+  X,
+  Send
 } from "lucide-react-native";
-import { colors, radii, spacing, typography } from "../../theme/theme";
-import { HeaderBar } from "../../components/common/HeaderBar";
-import { GlassCard } from "../../components/common/GlassCard";
-import { CategoryPill } from "../../components/common/CategoryPill";
-import { PrimaryButton } from "../../components/common/PrimaryButton";
+import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
+import { bidService } from "../../services/bidService";
+import { socketService } from "../../services/socketService";
+import { PopHeader } from "../../components/common/PopHeader";
+import { PopCard } from "../../components/common/PopCard";
+import { PopPill } from "../../components/common/PopPill";
+import { PopButton } from "../../components/common/PopButton";
+import { PopAvatar } from "../../components/common/PopAvatar";
 
-const BID_CATEGORIES = ["All Items", "Electronics", "Textbooks", "Hostel Gear", "Cycles"];
+const BID_CATEGORIES = ["All", "Electronics", "Books", "Hostel", "Cycles"];
+const TYPE_FILTERS = ["All Items", "Auctions", "Fixed Price"];
 
-const SAMPLE_LISTINGS = [
-  {
-    id: "bid-1",
-    title: "Sony WH-1000XM4 Noise Canceling Headphones",
-    category: "Electronics",
-    currentBid: 14500,
-    startingPrice: 10000,
-    bidsCount: 14,
-    endsIn: "2h 45m",
-    sellerName: "Rohan V.",
-    status: "ACTIVE"
-  },
-  {
-    id: "bid-2",
-    title: "Engineering Mechanics & Dynamics (Hibbeler 14th Ed)",
-    category: "Textbooks",
-    currentBid: 650,
-    startingPrice: 300,
-    bidsCount: 8,
-    endsIn: "5h 12m",
-    sellerName: "Priya S.",
-    status: "ACTIVE"
-  },
-  {
-    id: "bid-3",
-    title: "Hero Sprint Pro 21-Speed Mountain Bicycle",
-    category: "Cycles",
-    currentBid: 4200,
-    startingPrice: 2500,
-    bidsCount: 19,
-    endsIn: "1h 10m",
-    sellerName: "Alex R.",
-    status: "ACTIVE"
-  },
-  {
-    id: "bid-4",
-    title: "Ergonomic Mesh Study Chair with Lumbar Support",
-    category: "Hostel Gear",
-    currentBid: 1800,
-    startingPrice: 1200,
-    bidsCount: 6,
-    endsIn: "8h 30m",
-    sellerName: "Ananya M.",
-    status: "ACTIVE"
-  }
-];
-
-export const BidBrowseScreen = () => {
-  const [selectedCategory, setSelectedCategory] = useState("All Items");
+export const BidBrowseScreen = ({ navigation }) => {
+  const [items, setItems] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedType, setSelectedType] = useState("All Items");
   const [searchQuery, setSearchQuery] = useState("");
-  const [listings, setListings] = useState(SAMPLE_LISTINGS);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeBidItem, setActiveBidItem] = useState(null);
+  const [bidIncrement, setBidIncrement] = useState(50);
+  const [submittingBid, setSubmittingBid] = useState(false);
+  const [bidError, setBidError] = useState("");
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  const filteredListings = listings.filter((item) => {
-    const matchesCategory =
-      selectedCategory === "All Items" || item.category === selectedCategory;
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.sellerName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const fetchItems = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    try {
+      const typeParam = selectedType === "Auctions" ? "AUCTION" : selectedType === "Fixed Price" ? "FIXED" : "ALL";
+      const data = await bidService.getItems(selectedCategory, typeParam, searchQuery);
+      setItems(data || []);
+    } catch (err) {
+      console.warn("Failed to load marketplace items:", err.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [selectedCategory, selectedType, searchQuery]);
 
-  const renderBidCard = ({ item }) => {
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  // Real-time socket updates for new highest bids
+  useEffect(() => {
+    const handleBidUpdate = (updatedItem) => {
+      setItems((prev) =>
+        prev.map((it) => (it.id === updatedItem.id ? { ...it, ...updatedItem } : it))
+      );
+      if (activeBidItem?.id === updatedItem.id) {
+        setActiveBidItem((prev) => ({ ...prev, ...updatedItem }));
+      }
+    };
+
+    socketService.on("bid:new_highest", handleBidUpdate);
+    return () => {
+      socketService.off("bid:new_highest", handleBidUpdate);
+    };
+  }, [activeBidItem]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchItems(true);
+  };
+
+  const handlePlaceBid = async () => {
+    if (!activeBidItem) return;
+    setBidError("");
+    setSubmittingBid(true);
+
+    const minNextBid = (activeBidItem.currentBid || activeBidItem.startingPrice || 100) + bidIncrement;
+    try {
+      const res = await bidService.placeBid(activeBidItem.id, minNextBid);
+      setItems((prev) =>
+        prev.map((it) => (it.id === activeBidItem.id ? { ...it, ...res.item } : it))
+      );
+      setSubmittingBid(false);
+      setActiveBidItem(null);
+    } catch (err) {
+      setSubmittingBid(false);
+      setBidError(err.message || "Failed to place bid.");
+    }
+  };
+
+  const renderItemCard = ({ item }) => {
+    const isAuction = item.listingType === "AUCTION" || !item.listingType;
+    const currentPrice = item.currentBid || item.startingPrice || item.price || 0;
+
     return (
-      <GlassCard style={styles.card}>
+      <PopCard style={styles.card}>
         <View style={styles.cardTop}>
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE AUCTION</Text>
+          <View style={[styles.typeBadge, !isAuction && styles.typeBadgeFixed]}>
+            <Text style={[styles.typeBadgeText, !isAuction && styles.typeBadgeFixedText]}>
+              {isAuction ? "⚡ LIVE AUCTION" : "🏷️ FIXED PRICE"}
+            </Text>
           </View>
-          <View style={styles.timerRow}>
-            <Clock size={13} color={colors.secondary} />
-            <Text style={styles.timerText}>{item.endsIn}</Text>
-          </View>
+          {isAuction && (
+            <View style={styles.timerRow}>
+              <Clock size={13} color={colors.coral} />
+              <Text style={styles.timerText}>{item.endsIn || "2h left"}</Text>
+            </View>
+          )}
         </View>
 
         <Text style={styles.itemTitle}>{item.title}</Text>
-
-        <View style={styles.categoryChip}>
-          <Tag size={12} color={colors.primary} />
-          <Text style={styles.categoryChipText}>{item.category}</Text>
-        </View>
+        <Text style={styles.itemCategory}>{item.category} · Seller: {item.sellerName || "Student"}</Text>
 
         <View style={styles.priceContainer}>
-          <View style={styles.priceBlock}>
-            <Text style={styles.priceLabel}>CURRENT HIGHEST BID</Text>
-            <Text style={styles.currentBidValue}>₹{item.currentBid.toLocaleString()}</Text>
+          <View>
+            <Text style={styles.priceLabel}>{isAuction ? "CURRENT HIGHEST BID" : "PRICE"}</Text>
+            <Text style={styles.priceValue}>₹{currentPrice.toLocaleString()}</Text>
           </View>
-          <View style={styles.bidCountBadge}>
-            <TrendingUp size={13} color={colors.primary} />
-            <Text style={styles.bidCountText}>{item.bidsCount} bids</Text>
-          </View>
+          {isAuction && (
+            <View style={styles.bidCountBadge}>
+              <TrendingUp size={13} color={colors.coral} />
+              <Text style={styles.bidCountText}>{item.bidsCount || 0} bids</Text>
+            </View>
+          )}
         </View>
-
-        <View style={styles.divider} />
 
         <View style={styles.cardFooter}>
-          <Text style={styles.sellerText}>Seller: <Text style={styles.sellerName}>{item.sellerName}</Text></Text>
-          <PrimaryButton
-            title="Place Bid"
-            onPress={() => {}}
-            style={styles.bidBtn}
-            textStyle={{ fontSize: 13 }}
+          <PopButton
+            title={isAuction ? "Place Bid" : "Contact Seller"}
+            onPress={() => {
+              if (isAuction) {
+                setBidError("");
+                setActiveBidItem(item);
+              }
+            }}
+            variant="coral"
+            size="sm"
+            style={{ width: "100%" }}
           />
         </View>
-      </GlassCard>
+      </PopCard>
     );
   };
 
   return (
     <View style={styles.container}>
-      <HeaderBar title="CampusBid" subtitle="Live Verified Student Marketplace" />
+      <PopHeader
+        title="CampusBid"
+        subtitle="Marketplace & Auctions"
+        accentColor={colors.coral}
+        onProfilePress={() => navigation.navigate("Profile")}
+      />
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Search size={17} color={colors.textSubtle} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search items, textbooks, gadgets..."
-          placeholderTextColor={colors.textSubtle}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+      {/* Search Input */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchInputWrapper}>
+          <Search size={16} color={colors.inkFaint} style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search textbooks, gadgets, gear..."
+            placeholderTextColor={colors.inkFaint}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
       </View>
 
-      {/* Categories */}
+      {/* Category Pills */}
       <View style={styles.categoryContainer}>
         <FlatList
           horizontal
@@ -157,23 +192,95 @@ export const BidBrowseScreen = () => {
           data={BID_CATEGORIES}
           keyExtractor={(item) => item}
           renderItem={({ item }) => (
-            <CategoryPill
+            <PopPill
               label={item}
               active={selectedCategory === item}
+              accentColor={colors.coral}
+              accentSoft={colors.coralSoft}
               onPress={() => setSelectedCategory(item)}
             />
           )}
-          contentContainerStyle={styles.categoriesList}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
         />
       </View>
 
       {/* Listings List */}
       <FlatList
-        data={filteredListings}
+        data={items}
         keyExtractor={(item) => item.id}
-        renderItem={renderBidCard}
+        renderItem={renderItemCard}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.coral}
+            colors={[colors.coral]}
+          />
+        }
       />
+
+      {/* Bid Modal Sheet */}
+      <Modal visible={Boolean(activeBidItem)} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Place Live Bid</Text>
+              <TouchableOpacity onPress={() => setActiveBidItem(null)} style={styles.modalClose}>
+                <X size={18} color={colors.ink} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalItemTitle}>{activeBidItem?.title}</Text>
+              <Text style={styles.currentPriceText}>
+                Current Bid: <Text style={{ color: colors.coral }}>₹{(activeBidItem?.currentBid || activeBidItem?.startingPrice || 0).toLocaleString()}</Text>
+              </Text>
+
+              <Text style={styles.incrementLabel}>SELECT BID INCREMENT</Text>
+              <View style={styles.incrementRow}>
+                {[50, 100, 250, 500].map((inc) => (
+                  <TouchableOpacity
+                    key={inc}
+                    style={[
+                      styles.incBtn,
+                      bidIncrement === inc && styles.incBtnActive
+                    ]}
+                    onPress={() => setBidIncrement(inc)}
+                  >
+                    <Text
+                      style={[
+                        styles.incText,
+                        bidIncrement === inc && styles.incTextActive
+                      ]}
+                    >
+                      +₹{inc}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.totalBidBox}>
+                <Text style={styles.totalBidLabel}>YOUR TOTAL BID AMOUNT</Text>
+                <Text style={styles.totalBidValue}>
+                  ₹{((activeBidItem?.currentBid || activeBidItem?.startingPrice || 0) + bidIncrement).toLocaleString()}
+                </Text>
+              </View>
+
+              {bidError ? <Text style={styles.errorText}>{bidError}</Text> : null}
+
+              <PopButton
+                title="Submit Atomic Bid"
+                onPress={handlePlaceBid}
+                loading={submittingBid}
+                variant="coral"
+                size="lg"
+                icon={<Gavel size={18} color="#FFFFFF" />}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -181,69 +288,63 @@ export const BidBrowseScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary
+    backgroundColor: colors.canvas
   },
-  searchContainer: {
+  searchRow: {
+    paddingHorizontal: 16,
+    paddingTop: 12
+  },
+  searchInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.bgSurface,
+    backgroundColor: colors.surface,
     borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.borderGlass,
-    marginHorizontal: spacing.containerPadding,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-    paddingHorizontal: spacing.md,
-    height: 46
-  },
-  searchIcon: {
-    marginRight: spacing.sm
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    paddingHorizontal: 12,
+    height: 44,
+    ...shadows.hardSm
   },
   searchInput: {
     flex: 1,
-    color: colors.textPrimary,
-    fontSize: 14
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: "600"
   },
   categoryContainer: {
-    paddingVertical: spacing.md
-  },
-  categoriesList: {
-    paddingHorizontal: spacing.containerPadding
+    paddingVertical: 12
   },
   listContent: {
-    paddingHorizontal: spacing.containerPadding,
+    paddingHorizontal: 16,
     paddingBottom: 100
   },
   card: {
-    marginBottom: spacing.md,
-    padding: spacing.md
+    marginBottom: 14
   },
   cardTop: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.sm
+    marginBottom: 8
   },
-  liveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.accentOrangeLight,
+  typeBadge: {
+    backgroundColor: colors.coralSoft,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: radii.full
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.secondary,
-    marginRight: 6
-  },
-  liveText: {
+  typeBadgeText: {
     fontSize: 10,
     fontWeight: "800",
-    color: colors.secondary,
-    letterSpacing: 0.5
+    color: colors.coral
+  },
+  typeBadgeFixed: {
+    backgroundColor: colors.skySoft
+  },
+  typeBadgeFixedText: {
+    color: colors.sky
   },
   timerRow: {
     flexDirection: "row",
@@ -252,90 +353,171 @@ const styles = StyleSheet.create({
   },
   timerText: {
     ...typography.bodySm,
-    color: colors.secondary,
-    fontWeight: "700"
+    color: colors.coral,
+    fontWeight: "800"
   },
   itemTitle: {
     ...typography.h3,
     fontSize: 16,
-    color: colors.textPrimary,
-    marginBottom: 6
+    marginBottom: 2
   },
-  categoryChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.bgDim,
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: radii.full,
-    marginBottom: spacing.md
-  },
-  categoryChipText: {
+  itemCategory: {
     ...typography.bodySm,
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: "600"
+    color: colors.inkFaint,
+    marginBottom: 12
   },
   priceContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.bgSubtle,
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    marginBottom: spacing.md
-  },
-  priceBlock: {
-    justifyContent: "center"
+    backgroundColor: colors.surfaceInset,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    borderRadius: radii.md,
+    padding: 12,
+    marginBottom: 12
   },
   priceLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: colors.textSubtle,
+    fontSize: 9,
+    fontWeight: "800",
+    color: colors.inkFaint,
     letterSpacing: 0.5,
     marginBottom: 2
   },
-  currentBidValue: {
+  priceValue: {
     ...typography.h2,
-    fontSize: 22,
-    color: colors.primary
+    fontSize: 20,
+    color: colors.ink
   },
   bidCountBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: colors.bgDim,
+    backgroundColor: colors.coralSoft,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: radii.full
   },
   bidCountText: {
     ...typography.bodySm,
-    color: colors.primary,
-    fontWeight: "700"
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.borderSubtle,
-    marginBottom: spacing.sm
+    color: colors.coral,
+    fontWeight: "800"
   },
   cardFooter: {
+    marginTop: 4
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(23, 21, 15, 0.5)",
+    justifyContent: "flex-end"
+  },
+  modalSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    borderWidth: 2,
+    borderBottomWidth: 0,
+    borderColor: colors.lineStrong,
+    paddingBottom: 30,
+    ...shadows.hardLg
+  },
+  modalHeader: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center"
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.lineStrong
   },
-  sellerText: {
+  modalTitle: {
+    ...typography.h3,
+    fontSize: 18
+  },
+  modalClose: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.full,
+    backgroundColor: colors.canvas,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  modalBody: {
+    padding: 20
+  },
+  modalItemTitle: {
+    ...typography.h3,
+    fontSize: 17,
+    marginBottom: 4
+  },
+  currentPriceText: {
+    ...typography.body,
+    fontWeight: "700",
+    marginBottom: 16
+  },
+  incrementLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: colors.inkFaint,
+    letterSpacing: 0.5,
+    marginBottom: 10
+  },
+  incrementRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16
+  },
+  incBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.surfaceInset,
+    alignItems: "center",
+    ...shadows.hardSm
+  },
+  incBtnActive: {
+    backgroundColor: colors.coral
+  },
+  incText: {
+    ...typography.label,
+    fontSize: 13,
+    color: colors.ink
+  },
+  incTextActive: {
+    color: "#FFFFFF"
+  },
+  totalBidBox: {
+    backgroundColor: colors.canvasTint,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    padding: 14,
+    alignItems: "center",
+    marginBottom: 16
+  },
+  totalBidLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: colors.inkFaint,
+    letterSpacing: 0.5,
+    marginBottom: 4
+  },
+  totalBidValue: {
+    ...typography.h1,
+    fontSize: 26,
+    color: colors.coral
+  },
+  errorText: {
     ...typography.bodySm,
-    color: colors.textSubtle
-  },
-  sellerName: {
-    color: colors.textPrimary,
-    fontWeight: "700"
-  },
-  bidBtn: {
-    paddingVertical: 9,
-    paddingHorizontal: 18
+    color: colors.danger,
+    fontWeight: "700",
+    marginBottom: 12,
+    textAlign: "center"
   }
 });
