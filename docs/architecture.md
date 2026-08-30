@@ -28,16 +28,17 @@ CampusSync follows a **single centralized backend with dual client platforms** (
  │  │  └───────────┬────────────┘   └───────────┬────────────┘   └──────┬──────┘  │  │
  │  │              │                            │                       │         │  │
  │  │  ┌───────────▼────────────┐   ┌───────────▼────────────┐          │         │  │
- │  │  │ Member 5 Services      │   │ Member 6 Services      │          │         │  │
- │  │  │ - Campus Verification  │   │ - Bidding Concurrency  │          │         │  │
- │  │  │ - Connect Feed & Posts │   │ - Market Listings      │          │         │  │
- │  │  │ - Ride & Seat Logic    │   │ - Nearby Deals Feed    │          │         │  │
+ │  │  │ Core Services:         │   │ Market & Task Engine:  │          │         │  │
+ │  │  │ - College Auth & OTP   │   │ - Bidding & Auctions   │          │         │  │
+ │  │  │ - Connect Social Feed  │   │ - Skill-Sharing Net    │          │         │  │
+ │  │  │ - Cab Sharing Carpool  │   │ - Micro-Tasks / Gigs   │          │         │  │
+ │  │  │ - Local Deals & Events │   │ - Second-Hand Store    │          │         │  │
  │  │  └───────────┬────────────┘   └───────────┬────────────┘          │         │  │
  │  └──────────────┼────────────────────────────┼───────────────────────┴───────┬─┘  │
  │                 │ Private Internal Network (Zero Latency & No Egress Cost)   │    │
  │  ┌──────────────▼────────────────────────────▼───────────────────────────────▼─┐  │
  │  │            Render Managed PostgreSQL Database (campsync_db)                 │  │
- │  │     Users   │   Posts   │   Comments   │   Bids   │   Items   │   Rides     │  │
+ │  │   Users  │ Posts │ Comments │ Items │ Bids │ Skills │ Tasks │ Rides │ Deals │  │
  │  └─────────────────────────────────────────────────────────────────────────────┘  │
  └───────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -51,7 +52,7 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 | Component | Technology | Hosting Provider | Deployment & Operational Details |
 |---|---|---|---|
 | **Backend API & WebSockets** | Node.js (v18+) + Express + Socket.io | **Render.com (Web Service)** | Persistent process support, automatic HTTPS/WSS, auto-deploy from `CampSync.git` repo. |
-| **Shared Database** | PostgreSQL 15+ | **Render Managed PostgreSQL (`campsync_db`)** | Hosted in same Render region, private internal network URL (`DATABASE_URL`), persistent storage. |
+| **Shared Database** | PostgreSQL 15+ | **Render Managed PostgreSQL (`campsync_db`)** | Hosted in same Render region, private internal network URL (`DATABASE_URL`), persistent storage, automatic schema migrations. |
 | **Website (Laptop)** | React + Vite Single Page App | **Vercel** | Global Edge CDN, automated preview/production deployments on push. |
 | **Mobile App (Android)** | React Native (Expo) | **Expo Go (Dev) & Expo EAS (Cloud APK Build)** | Zero Android Studio required; live reload via Expo Go, cloud `.apk` builds via EAS. |
 
@@ -72,59 +73,75 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 
 ## 3. Database Schema (Entities & Relationships)
 
-### A. Users & Verification (`users`)
-- `id` (UUID / Serial, Primary Key)
-- `email` (VARCHAR, Unique, Must end with college domain e.g. `@college.edu`)
-- `name` (VARCHAR)
-- `department` (VARCHAR)
-- `hostel` (VARCHAR)
-- `is_verified` (BOOLEAN, default `false`)
-- `created_at` (TIMESTAMP)
+### A. Users & Verification (`users` & `otp_verifications`)
+- `users`: `id`, `email`, `name`, `department`, `hostel`, `is_verified`, `created_at`
+- `otp_verifications`: `email`, `otp_code`, `attempts_remaining`, `expires_at`, `last_requested_at`, `request_count`
 
 ### B. CampusConnect Posts (`posts` & `comments`)
-- `posts`: `id`, `author_id` (User FK), `is_anonymous` (BOOLEAN), `title` (VARCHAR), `content` (TEXT), `category` (VARCHAR), `upvotes` (INTEGER), `created_at`
-- `comments`: `id`, `post_id` (Post FK), `author_id` (User FK), `author_name` (VARCHAR), `content` (TEXT), `created_at`
+- `posts`: `id`, `author_id`, `author_name`, `is_anonymous`, `title`, `content`, `category`, `upvotes`, `created_at`
+- `comments`: `id`, `post_id`, `author_name`, `content`, `created_at`
 
-### C. CampusBid Marketplace (`items` & `bids`)
-- `items`: `id`, `seller_id` (User FK), `seller_name` (VARCHAR), `title` (VARCHAR), `description` (TEXT), `starting_price` (DECIMAL), `current_bid` (DECIMAL), `highest_bidder_id` (User FK), `highest_bidder_name` (VARCHAR), `bid_count` (INTEGER), `status` (`ACTIVE`, `SOLD`, `EXPIRED`), `expires_at` (TIMESTAMP), `category` (VARCHAR)
-- `bids`: `id`, `item_id` (Item FK), `bidder_id` (User FK), `bidder_name` (VARCHAR), `amount` (DECIMAL), `created_at` (TIMESTAMP)
+### C. Student Marketplace & CampusBid (`items` & `bids`)
+- `items`: `id`, `seller_id`, `seller_name`, `title`, `description`, `starting_price`, `current_bid`, `highest_bidder_id`, `highest_bidder_name`, `bid_count`, `status` (`ACTIVE`, `SOLD`, `EXPIRED`), `listing_type` (`AUCTION`, `FIXED_PRICE`), `condition`, `contact_info`, `expires_at`, `category`, `created_at`
+- `bids`: `id`, `item_id`, `bidder_id`, `bidder_name`, `amount`, `created_at`
 
-### D. CampusRide & Events (`rides`, `passengers`, `events`)
-- `rides`: `id`, `driver_id` (User FK), `driver_name` (VARCHAR), `origin` (VARCHAR), `destination` (VARCHAR), `departure_time` (VARCHAR), `total_seats` (INTEGER), `available_seats` (INTEGER), `price_per_seat` (DECIMAL), `created_at`
-- `passengers`: `id`, `ride_id` (Ride FK), `passenger_id` (User FK), `passenger_name` (VARCHAR), `joined_at`
-- `events`: `id`, `organizer_id` (User FK), `title` (VARCHAR), `description` (TEXT), `venue` (VARCHAR), `date_time` (VARCHAR), `attendees_count` (INTEGER), `category` (VARCHAR)
+### D. Skill-Sharing Network (`skills`)
+- `skills`: `id`, `user_id`, `user_name`, `user_department`, `user_hostel`, `title`, `description`, `category` (Tech & Coding, Academics & Tutoring, Design & Media, Music & Arts, Languages), `type` (`OFFER`, `REQUEST`), `pricing`, `contact`, `created_at`
 
-### E. CampusNearby (`deals`)
-- `deals`: `id`, `title` (VARCHAR), `business_name` (VARCHAR), `is_partner` (BOOLEAN), `discount_percent` (INTEGER), `code` (VARCHAR), `category` (VARCHAR), `distance` (VARCHAR), `valid_until` (VARCHAR)
+### E. Micro-Tasks & Campus Gigs (`tasks`)
+- `tasks`: `id`, `creator_id`, `creator_name`, `creator_hostel`, `title`, `description`, `reward`, `category`, `pickup_location`, `drop_location`, `status` (`OPEN`, `ASSIGNED`, `COMPLETED`, `CANCELLED`), `assigned_to_id`, `assigned_to_name`, `deadline`, `created_at`
+
+### F. CampusRide & Events (`rides`, `passengers`, `events`)
+- `rides`: `id`, `driver_id`, `driver_name`, `origin`, `destination`, `departure_time`, `total_seats`, `available_seats`, `price_per_seat`, `created_at`
+- `passengers`: `id`, `ride_id`, `passenger_id`, `passenger_name`, `seats_booked`, `joined_at`
+- `events`: `id`, `organizer_id`, `title`, `description`, `venue`, `date_time`, `attendees_count`, `category`, `created_at`
+
+### G. CampusNearby (`deals`)
+- `deals`: `id`, `title`, `business_name`, `is_partner`, `discount_percent`, `code`, `category`, `distance`, `valid_until`
 
 ---
 
 ## 4. API Endpoint Contracts
 
-### Auth & Campus Verification (Member 5)
-- `POST /api/auth/request-otp` — `{ email }` → Send 6-digit OTP code to college email.
-- `POST /api/auth/verify-otp` — `{ email, otp }` → Returns JWT auth token & user profile.
+### Auth & Campus Verification
+- `POST /api/auth/request-otp` — `{ email }` → Send 6-digit OTP code to college email (rate-limited, 60s cooldown).
+- `POST /api/auth/verify-otp` — `{ email, otp }` → Returns JWT auth token & user profile (5-attempt lockout).
 - `GET /api/auth/me` — Requires Bearer Token → Returns authenticated user object.
 
-### CampusConnect Feed APIs (Member 5)
-- `GET /api/connect/posts?category=academic&search=` → Returns list of posts.
+### CampusConnect Feed APIs
+- `GET /api/connect/posts` → Returns list of posts with comments and vote scores.
 - `POST /api/connect/posts` — `{ title, content, category, isAnonymous }` → Creates post.
-- `POST /api/connect/posts/:id/upvote` → Toggles upvote counter.
-- `POST /api/connect/posts/:id/comments` — `{ content }` → Adds comment.
+- `POST /api/connect/posts/:id/upvote` → Increments upvote counter.
+- `POST /api/connect/posts/:id/downvote` → Decrements upvote counter.
+- `POST /api/connect/posts/:id/comments` — `{ content }` → Adds threaded comment.
 
-### CampusBid Marketplace APIs (Member 6)
-- `GET /api/bid/items?status=ACTIVE` → Returns active marketplace listings.
-- `POST /api/bid/items` — `{ title, description, startingPrice, category, expiresAt }` → Creates listing.
-- `POST /api/bid/items/:id/bid` — `{ amount }` → Validates higher bid, updates item currentBid, emits socket update.
+### CampusBid & Student Marketplace
+- `GET /api/bid/items` → Returns active marketplace listings (Fixed price & Auction).
+- `POST /api/bid/items` — `{ title, description, startingPrice, category, expiresAt, listingType, condition, contactInfo }` → Creates listing.
+- `POST /api/bid/items/:id/bid` — `{ amount, bidderName }` → Atomic guarded bid update; broadcasts `bid:new_highest`.
 
-### CampusRide & Events APIs (Member 5)
-- `GET /api/ride/rides` → Returns upcoming carpools.
+### Skill-Sharing Network
+- `GET /api/skills?category=&type=&search=` → Returns skills filtered by category and type (`OFFER` vs `REQUEST`).
+- `GET /api/skills/:id` → Returns single skill profile.
+- `POST /api/skills` — `{ title, description, category, type, pricing, contact }` → Creates skill offer/request.
+- `DELETE /api/skills/:id` → Removes skill listing.
+
+### Micro-Tasks & Campus Gigs
+- `GET /api/tasks?status=&category=` → Returns tasks filtered by status (`OPEN`, `ASSIGNED`, `COMPLETED`).
+- `GET /api/tasks/:id` → Returns task details.
+- `POST /api/tasks` — `{ title, description, reward, category, pickupLocation, dropLocation, deadline }` → Creates task.
+- `POST /api/tasks/:id/accept` → Atomic guarded assignment (`WHERE status = 'OPEN'`); broadcasts `task:assigned`.
+- `POST /api/tasks/:id/complete` → Marks task completed.
+
+### CampusRide & Events
+- `GET /api/ride/rides` → Returns upcoming carpools with passenger lists.
 - `POST /api/ride/rides` — `{ origin, destination, departureTime, totalSeats, pricePerSeat }` → Posts ride.
-- `POST /api/ride/rides/:id/join` — `{ seatsCount }` → Decrements `availableSeats` safely, emits live seat update.
+- `POST /api/ride/rides/:id/join` — `{ seatsCount }` → Atomic guarded seat decrement (`WHERE available_seats >= n`); broadcasts `ride:seat_updated`.
 - `GET /api/ride/events` → Returns campus events.
+- `POST /api/ride/events/:id/rsvp` → Increments event attendee counter.
 
-### CampusNearby APIs (Member 6)
-- `GET /api/nearby/deals?partnerOnly=false` → Returns local discounts & events.
+### CampusNearby Deals
+- `GET /api/nearby/deals` → Returns local cafe/store discounts and promo codes.
 
 ---
 
@@ -132,6 +149,10 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 
 | Socket Event Name | Direction | Payload | Description |
 |---|---|---|---|
-| `ride:seat_updated` | Server → All Clients (Web & App) | `{ rideId, availableSeats }` | Broadcasted when a student joins or leaves a carpool. |
-| `bid:new_highest` | Server → All Clients (Web & App) | `{ itemId, currentBid, highestBidderName, bidCount }` | Broadcasted when a higher bid is placed in real-time. |
-| `connect:new_post` | Server → All Clients (Web & App) | `{ post }` | Broadcasted when a new community post is published. |
+| `bid:new_highest` | Server → All Clients | `{ itemId, currentBid, highestBidderName, bidCount }` | Broadcasted when a higher bid is placed in real-time. |
+| `ride:seat_updated` | Server → All Clients | `{ rideId, availableSeats }` | Broadcasted when a student joins or leaves a carpool. |
+| `task:created` | Server → All Clients | `{ task }` | Broadcasted when a new micro-task or errand is posted. |
+| `task:assigned` | Server → All Clients | `{ taskId, status, assignedToName }` | Broadcasted when a runner accepts an errand. |
+| `task:completed` | Server → All Clients | `{ taskId, status }` | Broadcasted when a task is marked completed. |
+| `skill:created` | Server → All Clients | `{ skill }` | Broadcasted when a student offers or requests a skill. |
+| `connect:new_post` | Server → All Clients | `{ post }` | Broadcasted when a new community post is published. |

@@ -8,7 +8,7 @@ export function setupSocketHandlers(io) {
     const clientType = socket.handshake.query.client || "web";
     console.log(`[Socket.io] 🟢 Client connected [${socket.id}] (Platform: ${clientType})`);
 
-    // Allow clients to join specific room channels (e.g. for a specific auction item or carpool)
+    // Join specific room channels (e.g. for a specific auction item or carpool)
     socket.on("join:room", (roomName) => {
       socket.join(roomName);
       console.log(`[Socket.io] Client ${socket.id} joined room: ${roomName}`);
@@ -33,6 +33,18 @@ export function setupSocketHandlers(io) {
     },
     broadcastNewPost: (post) => {
       io.emit("connect:new_post", post);
+    },
+    broadcastNewSkill: (skill) => {
+      io.emit("skill:created", skill);
+    },
+    broadcastNewTask: (task) => {
+      io.emit("task:created", task);
+    },
+    broadcastTaskAssigned: (payload) => {
+      io.emit("task:assigned", payload);
+    },
+    broadcastTaskCompleted: (payload) => {
+      io.emit("task:completed", payload);
     }
   };
 }

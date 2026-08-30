@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS items (
     bid_count INTEGER DEFAULT 0,
     status VARCHAR(32) DEFAULT 'ACTIVE',
     category VARCHAR(64) DEFAULT 'General',
+    listing_type VARCHAR(32) DEFAULT 'AUCTION', -- 'AUCTION' | 'FIXED_PRICE'
+    condition VARCHAR(64) DEFAULT 'Good',      -- 'Brand New' | 'Like New' | 'Good' | 'Used / Fair'
+    contact_info VARCHAR(255),
     expires_at VARCHAR(64) DEFAULT 'In 24 hours',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -63,6 +66,39 @@ CREATE TABLE IF NOT EXISTS bids (
     bidder_id VARCHAR(64) NOT NULL,
     bidder_name VARCHAR(255) NOT NULL,
     amount NUMERIC(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS skills (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    user_name VARCHAR(255) NOT NULL,
+    user_department VARCHAR(255),
+    user_hostel VARCHAR(255),
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(64) NOT NULL, -- 'Tech & Coding', 'Academics & Tutoring', 'Design & Media', 'Music & Arts', 'Languages', 'Other'
+    type VARCHAR(32) DEFAULT 'OFFER', -- 'OFFER' | 'REQUEST'
+    pricing VARCHAR(128) DEFAULT 'Free Peer Exchange', -- e.g. '₹200/hr', 'Free Peer Exchange', 'Negotiable'
+    contact VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id VARCHAR(64) PRIMARY KEY,
+    creator_id VARCHAR(64) NOT NULL,
+    creator_name VARCHAR(255) NOT NULL,
+    creator_hostel VARCHAR(255),
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    reward NUMERIC(10, 2) NOT NULL, -- Reward in INR e.g. 50, 100, 250
+    category VARCHAR(64) DEFAULT 'Errands', -- 'Printout & Stationary', 'Luggage & Moving', 'Courier & Parcel', 'Food Delivery', 'Academic Help', 'Errands'
+    pickup_location VARCHAR(255),
+    drop_location VARCHAR(255),
+    status VARCHAR(32) DEFAULT 'OPEN', -- 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'CANCELLED'
+    assigned_to_id VARCHAR(64),
+    assigned_to_name VARCHAR(255),
+    deadline VARCHAR(128) DEFAULT 'Within 2 hours',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -116,4 +152,8 @@ CREATE TABLE IF NOT EXISTS deals (
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_category ON posts(category);
 CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
+CREATE INDEX IF NOT EXISTS idx_skills_category ON skills(category);
+CREATE INDEX IF NOT EXISTS idx_skills_type ON skills(type);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category);
 CREATE INDEX IF NOT EXISTS idx_rides_available ON rides(available_seats);

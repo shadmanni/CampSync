@@ -17,7 +17,7 @@ export const getItems = async (req, res, next) => {
  */
 export const createItem = async (req, res, next) => {
   try {
-    const { title, description, startingPrice, category, expiresAt } = req.body;
+    const { title, description, startingPrice, category, expiresAt, listingType, condition, contactInfo } = req.body;
 
     if (!title || !title.trim() || !startingPrice) {
       return res.status(400).json({ success: false, error: "Title and starting price are required." });
@@ -38,8 +38,15 @@ export const createItem = async (req, res, next) => {
       description: description ? description.trim() : "",
       startingPrice: price,
       category: category || "General",
+      listingType: listingType || "AUCTION",
+      condition: condition || "Good",
+      contactInfo: contactInfo || "",
       expiresAt: expiresAt || "In 24 hours"
     });
+
+    if (req.io) {
+      req.io.emit("item:created", newItem);
+    }
 
     res.status(201).json(newItem);
   } catch (err) {

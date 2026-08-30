@@ -25,7 +25,7 @@ export const requireAuth = async (req, res, next) => {
 
     if (!user) {
       // Allow decoded payload fallback if user ID exists
-      req.user = { id: decoded.id, email: decoded.email, isVerified: decoded.isVerified };
+      req.user = { id: decoded.id, email: decoded.email, isVerified: decoded.isVerified, name: decoded.name || decoded.email.split("@")[0] };
     } else {
       req.user = user;
     }
@@ -38,6 +38,8 @@ export const requireAuth = async (req, res, next) => {
     });
   }
 };
+
+export const authenticateToken = requireAuth;
 
 /**
  * Optional Auth Middleware:

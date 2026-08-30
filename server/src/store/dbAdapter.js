@@ -83,8 +83,27 @@ class DatabaseAdapter {
       // Seed Items
       for (const i of mockDb.items) {
         await client.query(
-          "INSERT INTO items (id, seller_id, seller_name, title, description, starting_price, current_bid, highest_bidder_name, bid_count, status, expires_at, category) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
-          [i.id, i.sellerId, i.sellerName, i.title, i.description, i.startingPrice, i.currentBid, i.highestBidderName, i.bidCount, i.status, i.expiresAt, i.category]
+          `INSERT INTO items (id, seller_id, seller_name, title, description, starting_price, current_bid, highest_bidder_name, bid_count, status, expires_at, category, listing_type, condition, contact_info) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          [i.id, i.sellerId, i.sellerName, i.title, i.description, i.startingPrice, i.currentBid, i.highestBidderName, i.bidCount, i.status, i.expiresAt, i.category, i.listingType || "AUCTION", i.condition || "Good", i.contactInfo || ""]
+        );
+      }
+
+      // Seed Skills
+      for (const s of mockDb.skills || []) {
+        await client.query(
+          `INSERT INTO skills (id, user_id, user_name, user_department, user_hostel, title, description, category, type, pricing, contact) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [s.id, s.userId, s.userName, s.userDepartment, s.userHostel, s.title, s.description, s.category, s.type, s.pricing, s.contact]
+        );
+      }
+
+      // Seed Tasks
+      for (const t of mockDb.tasks || []) {
+        await client.query(
+          `INSERT INTO tasks (id, creator_id, creator_name, creator_hostel, title, description, reward, category, pickup_location, drop_location, status, assigned_to_id, assigned_to_name, deadline) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+          [t.id, t.creatorId, t.creatorName, t.creatorHostel, t.title, t.description, t.reward, t.category, t.pickupLocation, t.dropLocation, t.status, t.assignedToId, t.assignedToName, t.deadline]
         );
       }
 
@@ -198,29 +217,43 @@ class DatabaseAdapter {
     if (this.isPostgres) {
       const res = await this.pool.query("SELECT * FROM users WHERE email = $1", [email]);
       if (res.rows.length > 0) {
-        const u = res.rows[0];
-        return { id: u.id, email: u.email, name: u.name, department: u.department, hostel: u.hostel, isVerified: u.is_verified };
+        return res.rows[0];
       }
+
+      // Create new user profile from email
+      const username = email.split("@")[0].replace(/[._]/g, " ");
+      const formattedName = username
+        .split(" ")
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+
       const newUser = {
         id: `u-${Date.now()}`,
         email,
-        name: email.split("@")[0].replace(".", " ").toUpperCase(),
+        name: formattedName || "Verified Student",
         department: "Computer Science",
         hostel: "Hostel Block A",
-        isVerified: true
+        is_verified: true
       };
+
       await this.pool.query(
         "INSERT INTO users (id, email, name, department, hostel, is_verified) VALUES ($1, $2, $3, $4, $5, $6)",
-        [newUser.id, newUser.email, newUser.name, newUser.department, newUser.hostel, newUser.isVerified]
+        [newUser.id, newUser.email, newUser.name, newUser.department, newUser.hostel, newUser.is_verified]
       );
       return newUser;
     } else {
-      let user = this.inMemoryStore.users.find(u => u.email === email);
+      let user = this.inMemoryStore.users.find(u => u.email.toLowerCase() === email.toLowerCase());
       if (!user) {
+        const username = email.split("@")[0].replace(/[._]/g, " ");
+        const formattedName = username
+          .split(" ")
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ");
+
         user = {
           id: `u-${Date.now()}`,
           email,
-          name: email.split("@")[0].replace(".", " ").toUpperCase(),
+          name: formattedName || "Verified Student",
           department: "Computer Science",
           hostel: "Hostel Block A",
           isVerified: true
@@ -234,59 +267,41 @@ class DatabaseAdapter {
   async findUserById(id) {
     if (this.isPostgres) {
       const res = await this.pool.query("SELECT * FROM users WHERE id = $1", [id]);
-      if (res.rows.length === 0) return null;
-      const u = res.rows[0];
-      return { id: u.id, email: u.email, name: u.name, department: u.department, hostel: u.hostel, isVerified: u.is_verified };
+      return res.rows.length > 0 ? res.rows[0] : null;
     } else {
       return this.inMemoryStore.users.find(u => u.id === id) || null;
     }
   }
 
   /* ==========================================================================
-     CAMPUSCONNECT (POSTS, COMMENTS, UPVOTES & DOWNVOTES)
+     CAMPUSCONNECT POSTS & COMMENTS
      ========================================================================== */
 
-  async getPosts(category, search) {
+  async getPosts() {
     if (this.isPostgres) {
-      let query = `
+      const query = `
         SELECT p.id, p.author_id as "authorId", p.author_name as "authorName", 
                p.is_anonymous as "isAnonymous", p.title, p.content, p.category, 
                p.upvotes, p.created_at as "createdAt",
-               COALESCE(json_agg(
-                 json_build_object('id', c.id, 'authorName', c.author_name, 'content', c.content, 'createdAt', c.created_at)
-               ) FILTER (WHERE c.id IS NOT NULL), '[]') as comments
+               COALESCE(
+                 json_agg(
+                   json_build_object(
+                     'id', c.id,
+                     'authorName', c.author_name,
+                     'content', c.content,
+                     'createdAt', c.created_at
+                   ) ORDER BY c.created_at ASC
+                 ) FILTER (WHERE c.id IS NOT NULL), '[]'
+               ) as comments
         FROM posts p
         LEFT JOIN comments c ON p.id = c.post_id
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
       `;
-      const params = [];
-      const conditions = [];
-
-      if (category && category !== "All") {
-        params.push(category);
-        conditions.push(`LOWER(p.category) = LOWER($${params.length})`);
-      }
-      if (search) {
-        params.push(`%${search}%`);
-        conditions.push(`(p.title ILIKE $${params.length} OR p.content ILIKE $${params.length})`);
-      }
-
-      if (conditions.length > 0) {
-        query += " WHERE " + conditions.join(" AND ");
-      }
-      query += " GROUP BY p.id ORDER BY p.created_at DESC";
-
-      const res = await this.pool.query(query, params);
+      const res = await this.pool.query(query);
       return res.rows;
     } else {
-      let filtered = [...this.inMemoryStore.posts];
-      if (category && category !== "All") {
-        filtered = filtered.filter(p => p.category.toLowerCase() === category.toLowerCase());
-      }
-      if (search) {
-        const q = search.toLowerCase();
-        filtered = filtered.filter(p => p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q));
-      }
-      return filtered;
+      return this.inMemoryStore.posts;
     }
   }
 
@@ -295,7 +310,7 @@ class DatabaseAdapter {
       id: `post-${Date.now()}`,
       authorId: authorId || "u-current",
       authorName: isAnonymous ? "Anonymous Student" : (authorName || "Verified Student"),
-      isAnonymous: !!isAnonymous,
+      isAnonymous: Boolean(isAnonymous),
       title,
       content,
       category: category || "General",
@@ -306,7 +321,8 @@ class DatabaseAdapter {
 
     if (this.isPostgres) {
       await this.pool.query(
-        "INSERT INTO posts (id, author_id, author_name, is_anonymous, title, content, category, upvotes, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        `INSERT INTO posts (id, author_id, author_name, is_anonymous, title, content, category, upvotes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [newPost.id, newPost.authorId, newPost.authorName, newPost.isAnonymous, newPost.title, newPost.content, newPost.category, newPost.upvotes, newPost.createdAt]
       );
     } else {
@@ -315,34 +331,34 @@ class DatabaseAdapter {
     return newPost;
   }
 
-  async upvotePost(id) {
+  async upvotePost(postId) {
     if (this.isPostgres) {
       const res = await this.pool.query(
         "UPDATE posts SET upvotes = upvotes + 1 WHERE id = $1 RETURNING upvotes",
-        [id]
+        [postId]
       );
       if (res.rows.length === 0) return null;
       return res.rows[0].upvotes;
     } else {
-      const post = this.inMemoryStore.posts.find(p => p.id === id);
+      const post = this.inMemoryStore.posts.find(p => p.id === postId);
       if (!post) return null;
-      post.upvotes += 1;
+      post.upvotes = (post.upvotes || 0) + 1;
       return post.upvotes;
     }
   }
 
-  async downvotePost(id) {
+  async downvotePost(postId) {
     if (this.isPostgres) {
       const res = await this.pool.query(
         "UPDATE posts SET upvotes = GREATEST(0, upvotes - 1) WHERE id = $1 RETURNING upvotes",
-        [id]
+        [postId]
       );
       if (res.rows.length === 0) return null;
       return res.rows[0].upvotes;
     } else {
-      const post = this.inMemoryStore.posts.find(p => p.id === id);
+      const post = this.inMemoryStore.posts.find(p => p.id === postId);
       if (!post) return null;
-      post.upvotes = Math.max(0, post.upvotes - 1);
+      post.upvotes = Math.max(0, (post.upvotes || 1) - 1);
       return post.upvotes;
     }
   }
@@ -374,7 +390,7 @@ class DatabaseAdapter {
   }
 
   /* ==========================================================================
-     CAMPUSBID (MARKETPLACE WITH ATOMIC GUARDED BID UPDATE)
+     CAMPUSBID & STUDENT MARKETPLACE (BUY / SELL & AUCTION)
      ========================================================================== */
 
   async getItems() {
@@ -383,7 +399,8 @@ class DatabaseAdapter {
         `SELECT id, seller_id as "sellerId", seller_name as "sellerName", title, description, 
                 starting_price as "startingPrice", current_bid as "currentBid", 
                 highest_bidder_id as "highestBidderId", highest_bidder_name as "highestBidderName", 
-                bid_count as "bidCount", status, category, expires_at as "expiresAt", 
+                bid_count as "bidCount", status, category, listing_type as "listingType",
+                condition, contact_info as "contactInfo", expires_at as "expiresAt", 
                 created_at as "createdAt" 
          FROM items ORDER BY created_at DESC`
       );
@@ -393,7 +410,7 @@ class DatabaseAdapter {
     }
   }
 
-  async createItem({ sellerId, sellerName, title, description, startingPrice, category, expiresAt }) {
+  async createItem({ sellerId, sellerName, title, description, startingPrice, category, expiresAt, listingType, condition, contactInfo }) {
     const price = parseFloat(startingPrice);
     const item = {
       id: `item-${Date.now()}`,
@@ -406,6 +423,9 @@ class DatabaseAdapter {
       highestBidderName: "No bids yet",
       bidCount: 0,
       status: "ACTIVE",
+      listingType: listingType || "AUCTION",
+      condition: condition || "Good",
+      contactInfo: contactInfo || "",
       expiresAt: expiresAt || "In 24 hours",
       category: category || "General",
       createdAt: new Date().toISOString()
@@ -413,9 +433,9 @@ class DatabaseAdapter {
 
     if (this.isPostgres) {
       await this.pool.query(
-        `INSERT INTO items (id, seller_id, seller_name, title, description, starting_price, current_bid, highest_bidder_name, bid_count, status, expires_at, category, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-        [item.id, item.sellerId, item.sellerName, item.title, item.description, item.startingPrice, item.currentBid, item.highestBidderName, item.bidCount, item.status, item.expiresAt, item.category, item.createdAt]
+        `INSERT INTO items (id, seller_id, seller_name, title, description, starting_price, current_bid, highest_bidder_name, bid_count, status, expires_at, category, listing_type, condition, contact_info, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+        [item.id, item.sellerId, item.sellerName, item.title, item.description, item.startingPrice, item.currentBid, item.highestBidderName, item.bidCount, item.status, item.expiresAt, item.category, item.listingType, item.condition, item.contactInfo, item.createdAt]
       );
     } else {
       this.inMemoryStore.items.unshift(item);
@@ -485,6 +505,275 @@ class DatabaseAdapter {
       item.bidCount = (item.bidCount || 0) + 1;
 
       return { success: true, item };
+    }
+  }
+
+  /* ==========================================================================
+     SKILL-SHARING NETWORK (OFFER & REQUEST)
+     ========================================================================== */
+
+  async getSkills(filters = {}) {
+    const { category, type, search } = filters;
+
+    if (this.isPostgres) {
+      let query = `
+        SELECT id, user_id as "userId", user_name as "userName", 
+               user_department as "userDepartment", user_hostel as "userHostel", 
+               title, description, category, type, pricing, contact, 
+               created_at as "createdAt"
+        FROM skills
+        WHERE 1=1
+      `;
+      const values = [];
+      let paramIndex = 1;
+
+      if (category && category !== "All") {
+        query += ` AND category = $${paramIndex++}`;
+        values.push(category);
+      }
+      if (type && (type === "OFFER" || type === "REQUEST")) {
+        query += ` AND type = $${paramIndex++}`;
+        values.push(type);
+      }
+      if (search && search.trim()) {
+        query += ` AND (title ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+        values.push(`%${search.trim()}%`);
+        paramIndex++;
+      }
+
+      query += " ORDER BY created_at DESC";
+      const res = await this.pool.query(query, values);
+      return res.rows;
+    } else {
+      let results = [...(this.inMemoryStore.skills || [])];
+      if (category && category !== "All") {
+        results = results.filter(s => s.category.toLowerCase() === category.toLowerCase());
+      }
+      if (type && (type === "OFFER" || type === "REQUEST")) {
+        results = results.filter(s => s.type === type);
+      }
+      if (search && search.trim()) {
+        const q = search.trim().toLowerCase();
+        results = results.filter(s => s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q));
+      }
+      return results;
+    }
+  }
+
+  async getSkillById(id) {
+    if (this.isPostgres) {
+      const res = await this.pool.query(
+        `SELECT id, user_id as "userId", user_name as "userName", 
+                user_department as "userDepartment", user_hostel as "userHostel", 
+                title, description, category, type, pricing, contact, 
+                created_at as "createdAt"
+         FROM skills WHERE id = $1`,
+        [id]
+      );
+      return res.rows.length > 0 ? res.rows[0] : null;
+    } else {
+      return (this.inMemoryStore.skills || []).find(s => s.id === id) || null;
+    }
+  }
+
+  async createSkill({ userId, userName, userDepartment, userHostel, title, description, category, type, pricing, contact }) {
+    const newSkill = {
+      id: `skill-${Date.now()}`,
+      userId: userId || "u-current",
+      userName: userName || "Verified Student",
+      userDepartment: userDepartment || "Student",
+      userHostel: userHostel || "Campus Hostel",
+      title: title.trim(),
+      description: description.trim(),
+      category: category || "Tech & Coding",
+      type: type === "REQUEST" ? "REQUEST" : "OFFER",
+      pricing: pricing || "Free Peer Exchange",
+      contact: contact.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    if (this.isPostgres) {
+      await this.pool.query(
+        `INSERT INTO skills (id, user_id, user_name, user_department, user_hostel, title, description, category, type, pricing, contact, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [newSkill.id, newSkill.userId, newSkill.userName, newSkill.userDepartment, newSkill.userHostel, newSkill.title, newSkill.description, newSkill.category, newSkill.type, newSkill.pricing, newSkill.contact, newSkill.createdAt]
+      );
+    } else {
+      if (!this.inMemoryStore.skills) this.inMemoryStore.skills = [];
+      this.inMemoryStore.skills.unshift(newSkill);
+    }
+    return newSkill;
+  }
+
+  async deleteSkill(id, userId) {
+    if (this.isPostgres) {
+      const res = await this.pool.query(
+        "DELETE FROM skills WHERE id = $1 AND (user_id = $2 OR $2 = 'admin') RETURNING id",
+        [id, userId]
+      );
+      return res.rowCount > 0;
+    } else {
+      const initialLength = this.inMemoryStore.skills.length;
+      this.inMemoryStore.skills = this.inMemoryStore.skills.filter(s => s.id !== id);
+      return this.inMemoryStore.skills.length < initialLength;
+    }
+  }
+
+  /* ==========================================================================
+     MICRO-TASK MARKETPLACE (CAMPUS GIGS & ERRANDS)
+     ========================================================================== */
+
+  async getTasks(filters = {}) {
+    const { status, category } = filters;
+
+    if (this.isPostgres) {
+      let query = `
+        SELECT id, creator_id as "creatorId", creator_name as "creatorName", 
+               creator_hostel as "creatorHostel", title, description, reward, 
+               category, pickup_location as "pickupLocation", drop_location as "dropLocation", 
+               status, assigned_to_id as "assignedToId", assigned_to_name as "assignedToName", 
+               deadline, created_at as "createdAt"
+        FROM tasks
+        WHERE 1=1
+      `;
+      const values = [];
+      let paramIndex = 1;
+
+      if (status && status !== "ALL") {
+        query += ` AND status = $${paramIndex++}`;
+        values.push(status);
+      }
+      if (category && category !== "All") {
+        query += ` AND category = $${paramIndex++}`;
+        values.push(category);
+      }
+
+      query += " ORDER BY created_at DESC";
+      const res = await this.pool.query(query, values);
+      return res.rows;
+    } else {
+      let results = [...(this.inMemoryStore.tasks || [])];
+      if (status && status !== "ALL") {
+        results = results.filter(t => t.status === status);
+      }
+      if (category && category !== "All") {
+        results = results.filter(t => t.category.toLowerCase() === category.toLowerCase());
+      }
+      return results;
+    }
+  }
+
+  async getTaskById(id) {
+    if (this.isPostgres) {
+      const res = await this.pool.query(
+        `SELECT id, creator_id as "creatorId", creator_name as "creatorName", 
+                creator_hostel as "creatorHostel", title, description, reward, 
+                category, pickup_location as "pickupLocation", drop_location as "dropLocation", 
+                status, assigned_to_id as "assignedToId", assigned_to_name as "assignedToName", 
+                deadline, created_at as "createdAt"
+         FROM tasks WHERE id = $1`,
+        [id]
+      );
+      return res.rows.length > 0 ? res.rows[0] : null;
+    } else {
+      return (this.inMemoryStore.tasks || []).find(t => t.id === id) || null;
+    }
+  }
+
+  async createTask({ creatorId, creatorName, creatorHostel, title, description, reward, category, pickupLocation, dropLocation, deadline }) {
+    const numericReward = parseFloat(reward) || 50;
+    const newTask = {
+      id: `task-${Date.now()}`,
+      creatorId: creatorId || "u-current",
+      creatorName: creatorName || "Verified Student",
+      creatorHostel: creatorHostel || "Campus Hostel",
+      title: title.trim(),
+      description: description.trim(),
+      reward: numericReward,
+      category: category || "Errands",
+      pickupLocation: pickupLocation || "Campus",
+      dropLocation: dropLocation || "Hostel",
+      status: "OPEN",
+      assignedToId: null,
+      assignedToName: null,
+      deadline: deadline || "Within 2 hours",
+      createdAt: new Date().toISOString()
+    };
+
+    if (this.isPostgres) {
+      await this.pool.query(
+        `INSERT INTO tasks (id, creator_id, creator_name, creator_hostel, title, description, reward, category, pickup_location, drop_location, status, deadline, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [newTask.id, newTask.creatorId, newTask.creatorName, newTask.creatorHostel, newTask.title, newTask.description, newTask.reward, newTask.category, newTask.pickupLocation, newTask.dropLocation, newTask.status, newTask.deadline, newTask.createdAt]
+      );
+    } else {
+      if (!this.inMemoryStore.tasks) this.inMemoryStore.tasks = [];
+      this.inMemoryStore.tasks.unshift(newTask);
+    }
+    return newTask;
+  }
+
+  /**
+   * ATOMIC GUARDED TASK ASSIGNMENT
+   * WHERE id = $taskId AND status = 'OPEN'
+   */
+  async assignAtomicTask(taskId, assignedToId, assignedToName) {
+    if (this.isPostgres) {
+      const updateQuery = `
+        UPDATE tasks
+        SET status = 'ASSIGNED',
+            assigned_to_id = $1,
+            assigned_to_name = $2
+        WHERE id = $3 AND status = 'OPEN'
+        RETURNING id, title, status, assigned_to_id as "assignedToId", assigned_to_name as "assignedToName";
+      `;
+      const res = await this.pool.query(updateQuery, [assignedToId, assignedToName, taskId]);
+
+      if (res.rowCount === 1) {
+        return { success: true, task: res.rows[0] };
+      } else {
+        const check = await this.pool.query("SELECT status FROM tasks WHERE id = $1", [taskId]);
+        if (check.rows.length === 0) return { success: false, error: "Task not found." };
+        return { success: false, error: `Task is already ${check.rows[0].status.toLowerCase()}.` };
+      }
+    } else {
+      const task = (this.inMemoryStore.tasks || []).find(t => t.id === taskId);
+      if (!task) return { success: false, error: "Task not found." };
+      if (task.status !== "OPEN") return { success: false, error: `Task is already ${task.status.toLowerCase()}.` };
+
+      task.status = "ASSIGNED";
+      task.assignedToId = assignedToId;
+      task.assignedToName = assignedToName;
+
+      return { success: true, task };
+    }
+  }
+
+  /**
+   * ATOMIC TASK COMPLETION
+   */
+  async completeAtomicTask(taskId, completedById) {
+    if (this.isPostgres) {
+      const updateQuery = `
+        UPDATE tasks
+        SET status = 'COMPLETED'
+        WHERE id = $1 AND status = 'ASSIGNED'
+        RETURNING id, title, status, reward;
+      `;
+      const res = await this.pool.query(updateQuery, [taskId]);
+
+      if (res.rowCount === 1) {
+        return { success: true, task: res.rows[0] };
+      } else {
+        return { success: false, error: "Task cannot be completed (it might not be assigned or already completed)." };
+      }
+    } else {
+      const task = (this.inMemoryStore.tasks || []).find(t => t.id === taskId);
+      if (!task) return { success: false, error: "Task not found." };
+      if (task.status !== "ASSIGNED") return { success: false, error: "Task is not in assigned state." };
+
+      task.status = "COMPLETED";
+      return { success: true, task };
     }
   }
 
