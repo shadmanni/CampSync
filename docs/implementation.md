@@ -7,10 +7,10 @@
 ## 1. Project Architecture Strategy
 
 CampusSync is engineered as a **dual-platform system with a single shared core**:
-1. **Web Client (`client/`)**: Built with React + Vite, customized for laptop/desktop screen real estate and fast multitasking.
-2. **Android App (`app/`)**: Built with React Native (Expo), customized for on-the-go mobile usage, touch interactions, and notifications.
-3. **Backend Engine (`server/`)**: Centralized Node.js + Express + Socket.io server providing unified REST endpoints and WebSocket events.
-4. **Shared Cloud Database**: Single PostgreSQL/Supabase/MongoDB database serving both clients simultaneously.
+1. **Web Client (`client/`)**: Built with React + Vite, hosted on **Vercel** (Global Edge CDN), tailored for laptop/desktop screen real estate.
+2. **Android App (`app/`)**: Built with React Native + Expo, tested via **Expo Go** (physical phone live reload), and built into APKs via **Expo EAS** (no Android Studio required).
+3. **Backend Engine (`server/`)**: Centralized Node.js + Express + Socket.io server hosted on **Render.com** (Web Service).
+4. **Shared Database**: **Render Managed PostgreSQL Database (`campsync_db`)** directly connected to the server via Render's internal zero-latency network.
 
 ---
 
@@ -40,15 +40,15 @@ CPI/
 │   │   ├── screens/            # ConnectScreen, BidScreen, RideScreen, NearbyScreen
 │   │   ├── services/           # api.js, socket.js, authStorage.js
 │   │   └── theme/              # themeTokens.js (matches design.md)
-│   ├── app.json                # Expo config & Android permissions
+│   ├── app.json                # Expo config & Android package name
 │   └── package.json
 └── server/                     # Backend API & WebSocket Engine (Node.js/Express)
     ├── src/
     │   ├── controllers/        # auth, connect, bid, ride, nearby
-    │   ├── middleware/         # authMiddleware.js, rateLimiter.js
-    │   ├── routes/             # apiRoutes.js
+    │   ├── middleware/         # authMiddleware.js, errorHandler.js
+    │   ├── routes/             # api.js, authRoutes, connectRoutes, bidRoutes, rideRoutes, nearbyRoutes
     │   ├── sockets/            # socketHandler.js
-    │   ├── store/              # mockDb.js / dbAdapter.js
+    │   ├── store/              # dbAdapter.js (PostgreSQL + Mock fallback)
     │   └── server.js
     ├── package.json
     └── .env.example
@@ -60,23 +60,23 @@ CPI/
 
 ### Phase 1 — Setup & Dual-Platform Architecture (Week 1)
 - [x] Create project workspace layout (`client/`, `server/`, `docs/`, `app/`).
-- [x] Formulate architecture contracts for shared database and unified REST/Socket APIs.
+- [x] Formulate architecture contracts for Render server, Render PostgreSQL DB, and unified REST/Socket APIs.
 - [x] Scaffold React + Vite client app (`client/`) with design tokens.
 - [x] Scaffold Node.js + Express backend (`server/`) with mock data store & JWT auth.
 - [ ] Scaffold React Native / Expo app (`app/`) with matching theme tokens and navigation.
 
-### Phase 2 — Core Module Implementation (Weeks 2–3)
+### Phase 2 — Modular Backend & Cloud Database (Weeks 2–3)
+- [ ] **Backend Team (Members 5 & 6)**: Build modular controllers (`auth`, `connect`, `bid`, `ride`, `nearby`), PostgreSQL migration scripts, and real-time Socket.io handlers.
 - [ ] **Web Frontend (Members 3 & 4)**: Build CampusConnect, CampusBid, CampusRide, and CampusNearby views for laptop browsers.
-- [ ] **Mobile App Team**: Build matching mobile screens with bottom navigation, pull-to-refresh, and slide-up drawers.
-- [ ] **Backend Team (Members 5 & 6)**: Implement unified OTP Auth, CampusConnect APIs, CampusBid concurrency logic, CampusRide seat management, and live Socket broadcasts.
+- [ ] **Mobile App (Member 7)**: Build matching mobile screens with bottom navigation, pull-to-refresh, and slide-up drawers.
 
-### Phase 3 — Integration & Hosting Pipeline (Week 4)
+### Phase 3 — Render Cloud Hosting & EAS Build (Week 4)
 - [ ] **Member 7 (DevOps/Integration)**:
-  - Deploy Node.js server on **Railway** / **Render** with WebSocket support enabled.
-  - Connect managed **Supabase** / **PostgreSQL** cloud database.
-  - Deploy Web Client on **Vercel** with `VITE_API_URL` configured.
-  - Configure **Expo EAS** to generate standalone Android APK/AAB build.
-- [ ] Connect both Web and Android apps to the live cloud backend URL.
+  - Create **Render Managed PostgreSQL** database instance (`campsync_db`).
+  - Deploy **Render Web Service** for `server/` with internal `DATABASE_URL` wired.
+  - Deploy Web Client on **Vercel** with `VITE_API_URL` pointed to Render live backend.
+  - Configure **Expo EAS** to generate standalone Android APK (`eas build -p android --profile preview`).
+- [ ] Verify both Web (laptop) and Android App (mobile) connect to the live Render backend.
 
 ### Phase 4 — Testing, Security & Presentation (Weeks 5–6)
 - [ ] **Member 8 (QA & Security)**: Execute cross-platform testing (action on Web immediately reflects on Android app in real-time).
@@ -103,49 +103,74 @@ npm run dev
 # Running on http://localhost:5000 (API & Socket.io)
 ```
 
-### C. Android Mobile App (Expo)
+### C. Android Mobile App (Expo — No Android Studio Required)
 ```bash
 cd app
 npx create-expo-app@latest ./ --template blank
 npm install socket.io-client @react-navigation/native @react-navigation/bottom-tabs expo-secure-store lucide-react-native
-npx expo start --android
+npx expo start
+# Scan QR code using Expo Go app on your Android phone!
 ```
 
 ---
 
 ## 5. Cloud Hosting & Deployment Guide
 
-### 1. Hosting Backend Server & WebSockets (Railway / Render)
-1. Push repo to GitHub.
-2. Link `server/` directory on Railway or Render.
-3. Set environment variables:
-   ```env
-   PORT=5000
-   JWT_SECRET=your_super_secret_jwt_key
-   DATABASE_URL=postgresql://user:password@host:5432/campussync
-   CORS_ORIGIN=https://campussync.vercel.app,http://localhost:5173
+### 1. Render Database Setup (Render Managed PostgreSQL)
+1. Go to [Render Dashboard](https://dashboard.render.com).
+2. Click **New +** → **PostgreSQL**.
+3. Name: `campsync-db`, Database: `campsync_db`, User: `campsync_user`.
+4. Region: Choose closest region (e.g., Singapore or Frankfurt).
+5. Click **Create Database**.
+6. Copy the **Internal Database URL** (e.g., `postgres://campsync_user:xxx@dpg-xxx-a:5432/campsync_db`).
+
+### 2. Render Server Setup (Node.js Web Service)
+1. In Render Dashboard, click **New +** → **Web Service**.
+2. Connect your GitHub repository: `https://github.com/shadmanni/CampSync.git` (branch `abhijeet`).
+3. Settings:
+   - **Root Directory**: `server`
+   - **Environment**: `Node`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+4. Add Environment Variables:
+   - `PORT`: `5000`
+   - `JWT_SECRET`: `campussync_super_secret_jwt_key_2026`
+   - `DATABASE_URL`: *(Paste the Internal Database URL from Step 1)*
+   - `CORS_ORIGIN`: `*` (or your Vercel URL)
+5. Click **Create Web Service**. Render will deploy your live API and WebSocket endpoint (e.g., `https://campsync-server.onrender.com`).
+
+### 3. Web Client Hosting (Vercel)
+1. Go to [Vercel](https://vercel.com) and click **Add New** → **Project**.
+2. Import `CampSync` GitHub repository.
+3. Configure Project:
+   - **Root Directory**: `client`
+   - **Framework Preset**: `Vite`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. Add Environment Variable:
+   - `VITE_API_URL`: `https://campsync-server.onrender.com`
+5. Click **Deploy**.
+
+### 4. Android App APK Build (Expo EAS)
+1. In `app/app.json`, configure Android bundle identifier:
+   ```json
+   {
+     "expo": {
+       "name": "CampusSync",
+       "slug": "campussync",
+       "android": {
+         "package": "com.campussync.app"
+       }
+     }
+   }
    ```
-4. Railway/Render automatically provisions an HTTPS/WSS endpoint (e.g. `https://api-campussync.up.railway.app`).
-
-### 2. Hosting Web Application (Vercel)
-1. Link `client/` directory on Vercel.
-2. Build Settings:
-   - Framework: `Vite`
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-3. Environment Variable:
-   - `VITE_API_URL=https://api-campussync.up.railway.app`
-4. Deploy.
-
-### 3. Building Android App (Expo EAS)
-1. In `app/app.json`, configure Android package name (`com.campussync.app`).
-2. Run EAS build to generate APK:
+2. Build standalone APK in the cloud without Android Studio:
    ```bash
    npm install -g eas-cli
    eas login
    eas build -p android --profile preview
    ```
-3. Download and install the resulting `.apk` on Android devices.
+3. Download the generated `.apk` file and install it directly on any Android phone.
 
 ---
 
