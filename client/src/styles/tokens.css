@@ -1,0 +1,161 @@
+/* ==========================================================================
+   CampusSync — Design Tokens
+   One token layer, two skins. Every component below reads ONLY from these
+   variables, so the light/dark switch never touches a component file.
+   Light = "Campus Pop": warm cream canvas, ink borders, hard offset shadows.
+   Dark  = same geometry, but rims and glows replace ink and offsets.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand accents (module identity) --------------------------------- */
+  --violet: #6E56F8;
+  --violet-soft: #EEEAFF;
+  --coral: #FF6B35;
+  --coral-soft: #FFEDE5;
+  --mint: #12B886;
+  --mint-soft: #E1F8F0;
+  --sky: #0EA5E9;
+  --sky-soft: #E2F4FE;
+  --sun: #FFB703;
+  --sun-soft: #FFF4D9;
+  --rose: #F43F5E;
+  --rose-soft: #FFE8EC;
+
+  /* Module -> accent. Set as --accent on a subtree to re-skin everything
+     inside it (buttons, rings, badges) without prop-drilling colour. */
+  --accent: var(--violet);
+  --accent-soft: var(--violet-soft);
+  --on-accent: #FFFFFF;
+
+  /* ---- Surfaces & ink --------------------------------------------------- */
+  --canvas: #FDFBF5;
+  --canvas-tint: #F6F1E4;
+  --surface: #FFFFFF;
+  --surface-2: #FBF8F1;
+  --surface-inset: #F3EFE4;
+
+  --ink: #17150F;
+  --ink-soft: #58524A;
+  --ink-faint: #8E877A;
+  --ink-invert: #FDFBF5;
+
+  --line: rgba(23, 21, 15, 0.12);
+  --line-strong: rgba(23, 21, 15, 0.88);
+  --line-width: 1.5px;
+
+  /* ---- Elevation --------------------------------------------------------
+     In light mode a card is defined by an ink edge + a hard offset block.
+     In dark mode both collapse to rims and glow, so the same class works. */
+  --shadow-hard: 4px 4px 0 rgba(23, 21, 15, 0.9);
+  --shadow-hard-sm: 2px 2px 0 rgba(23, 21, 15, 0.9);
+  --shadow-hard-lg: 7px 7px 0 rgba(23, 21, 15, 0.9);
+  --shadow-soft: 0 1px 2px rgba(23, 21, 15, 0.05), 0 8px 24px -12px rgba(23, 21, 15, 0.18);
+  --shadow-lift: 0 2px 4px rgba(23, 21, 15, 0.06), 0 18px 40px -18px rgba(23, 21, 15, 0.28);
+  --shadow-accent: 0 8px 24px -10px color-mix(in srgb, var(--accent) 60%, transparent);
+
+  --glass: rgba(253, 251, 245, 0.72);
+  --glass-blur: saturate(180%) blur(20px);
+
+  /* Ambient wash painted behind the page. */
+  --aura-1: color-mix(in srgb, var(--violet) 16%, transparent);
+  --aura-2: color-mix(in srgb, var(--sun) 20%, transparent);
+  --aura-3: color-mix(in srgb, var(--mint) 12%, transparent);
+  --grain-opacity: 0.30;
+
+  /* ---- Type ------------------------------------------------------------- */
+  --font-display: 'Bricolage Grotesque', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  --t-hero: clamp(2.75rem, 9vw, 6.5rem);
+  --t-display: clamp(2rem, 5vw, 3.4rem);
+  --t-title: clamp(1.4rem, 2.6vw, 2rem);
+  --t-heading: 1.15rem;
+  --t-body: 0.975rem;
+  --t-small: 0.85rem;
+  --t-micro: 0.72rem;
+
+  /* ---- Geometry --------------------------------------------------------- */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 30px;
+  --r-pill: 999px;
+
+  --gap-xs: 6px;
+  --gap-sm: 10px;
+  --gap: 16px;
+  --gap-lg: 24px;
+  --gap-xl: 40px;
+  --shell-max: 1180px;
+  --nav-h: 72px;
+
+  /* ---- Motion ----------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur: 240ms;
+  --dur-slow: 520ms;
+
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   Dark skin — only token values change below this line.
+   ========================================================================== */
+:root[data-theme='dark'] {
+  --violet: #8B78FF;
+  --violet-soft: rgba(139, 120, 255, 0.16);
+  --coral: #FF854F;
+  --coral-soft: rgba(255, 133, 79, 0.16);
+  --mint: #2BD9A5;
+  --mint-soft: rgba(43, 217, 165, 0.14);
+  --sky: #38BDF8;
+  --sky-soft: rgba(56, 189, 248, 0.14);
+  --sun: #FFC53D;
+  --sun-soft: rgba(255, 197, 61, 0.14);
+  --rose: #FB7185;
+  --rose-soft: rgba(251, 113, 133, 0.16);
+
+  --on-accent: #0C0B10;
+
+  --canvas: #0C0B10;
+  --canvas-tint: #131119;
+  --surface: #17151F;
+  --surface-2: #1E1B29;
+  --surface-inset: #100E17;
+
+  --ink: #F6F4FF;
+  --ink-soft: #A7A0BE;
+  --ink-faint: #6E6788;
+  --ink-invert: #0C0B10;
+
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.24);
+  --line-width: 1px;
+
+  /* Offsets become rims + glow: same class names, different physics of light. */
+  --shadow-hard: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 30px -12px rgba(0, 0, 0, 0.9);
+  --shadow-hard-sm: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 6px 18px -10px rgba(0, 0, 0, 0.9);
+  --shadow-hard-lg: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 20px 50px -18px rgba(0, 0, 0, 0.95);
+  --shadow-soft: 0 8px 28px -16px rgba(0, 0, 0, 0.9);
+  --shadow-lift: 0 24px 60px -24px rgba(0, 0, 0, 0.95);
+  --shadow-accent: 0 10px 34px -12px color-mix(in srgb, var(--accent) 55%, transparent);
+
+  --glass: rgba(18, 16, 26, 0.72);
+
+  --aura-1: color-mix(in srgb, var(--violet) 26%, transparent);
+  --aura-2: color-mix(in srgb, var(--sky) 20%, transparent);
+  --aura-3: color-mix(in srgb, var(--mint) 16%, transparent);
+  --grain-opacity: 0.22;
+
+  color-scheme: dark;
+}
+
+/* Accent scopes — wrap a module in these to recolour the whole subtree. */
+.accent-violet { --accent: var(--violet); --accent-soft: var(--violet-soft); }
+.accent-coral  { --accent: var(--coral);  --accent-soft: var(--coral-soft); }
+.accent-mint   { --accent: var(--mint);   --accent-soft: var(--mint-soft); }
+.accent-sky    { --accent: var(--sky);    --accent-soft: var(--sky-soft); }
+.accent-sun    { --accent: var(--sun);    --accent-soft: var(--sun-soft); }
