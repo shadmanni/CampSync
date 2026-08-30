@@ -48,8 +48,9 @@ CPI/
     │   ├── middleware/         # authMiddleware.js, errorHandler.js
     │   ├── routes/             # api.js, authRoutes, connectRoutes, bidRoutes, rideRoutes, nearbyRoutes
     │   ├── sockets/            # socketHandler.js
-    │   ├── store/              # dbAdapter.js (PostgreSQL + Mock fallback)
+    │   ├── store/              # dbAdapter.js, schema.sql, mockDb.js
     │   └── server.js
+    ├── test-api.js             # Automated integration & concurrency test suite
     ├── package.json
     └── .env.example
 ```
@@ -66,7 +67,10 @@ CPI/
 - [ ] Scaffold React Native / Expo app (`app/`) with matching theme tokens and navigation.
 
 ### Phase 2 — Modular Backend & Cloud Database (Weeks 2–3)
-- [ ] **Backend Team (Members 5 & 6)**: Build modular controllers (`auth`, `connect`, `bid`, `ride`, `nearby`), PostgreSQL migration scripts, and real-time Socket.io handlers.
+- [x] **Backend Team (Members 5 & 6)**: Build modular controllers (`auth`, `connect`, `bid`, `ride`, `nearby`), PostgreSQL migration scripts (`schema.sql`), and real-time Socket.io handlers.
+- [x] Implement atomic concurrency guards for Bidding and Carpool bookings.
+- [x] Implement OTP rate limiting, cooldown, and lockout protection.
+- [x] Run automated test suite (`test-api.js`) — 22/22 tests passing.
 - [ ] **Web Frontend (Members 3 & 4)**: Build CampusConnect, CampusBid, CampusRide, and CampusNearby views for laptop browsers.
 - [ ] **Mobile App (Member 7)**: Build matching mobile screens with bottom navigation, pull-to-refresh, and slide-up drawers.
 
@@ -101,6 +105,9 @@ cd server
 npm install
 npm run dev
 # Running on http://localhost:5000 (API & Socket.io)
+
+# Run automated integration & race-condition test suite:
+node test-api.js
 ```
 
 ### C. Android Mobile App (Expo — No Android Studio Required)
