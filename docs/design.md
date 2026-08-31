@@ -1,100 +1,177 @@
-# CampusSync — Design System & UI Specifications
+# CampusSync — Design System & UI Specification
 
-> **Note**: Owned by Member 2 (UI/UX Designer). Used by Web Frontend Developers (Member 3 & 4) and Mobile App Developers for visual consistency across Web & Android.
-
----
-
-## 1. Visual Design Philosophy & Aesthetics
-
-CampusSync features a modern, high-contrast, glassmorphic UI tailored for vibrant campus engagement. The visual identity remains strictly unified between the **Web (Laptop)** and **Android Mobile App**:
-- **Dark Mode First with Vibrant Accent Pops**: Sleek obsidian canvas (`#0b0f19`) paired with neon violet (`#6366f1`) and emerald cyan (`#06b6d4`) accents.
-- **Glassmorphism & Layering**: Translucent card backgrounds (`rgba(30, 41, 59, 0.7)`), subtle backdrop blurs (`12px`), and delicate 1px border highlights (`rgba(255, 255, 255, 0.1)`).
-- **Typography & Readability**: Primary font family: **Inter** or **Outfit** via Google Fonts. Clean visual hierarchy, high-contrast text, clear badge labels.
-- **Dynamic Micro-Interactions**: Soft hover elevations (web), haptic-like press feedback (app), glowing ring state indicators, and smooth state transitions.
+> Owned by Member 2 (UI/UX) with Members 3 & 4 (Web Frontend). This document
+> describes the system **as implemented** in `client/src/styles/`. If a value
+> here and a value in `tokens.css` disagree, `tokens.css` wins — update this doc.
 
 ---
 
-## 2. Design Tokens (Shared Across Web & Mobile)
+## 1. Direction: "Campus Pop"
 
-```css
-:root {
-  /* Color Palette */
-  --bg-primary: #0b0f19;
-  --bg-surface: rgba(17, 24, 39, 0.8);
-  --bg-glass: rgba(30, 41, 59, 0.65);
-  --border-glass: rgba(255, 255, 255, 0.1);
-  --border-highlight: rgba(99, 102, 241, 0.4);
+A bright, high-contrast, slightly playful identity that reads as *built by
+students, for students* — and a matching dark mode for people who prefer it.
 
-  /* Primary & Accent Colors */
-  --primary-500: #6366f1;
-  --primary-600: #4f46e5;
-  --accent-cyan: #06b6d4;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-rose: #f43f5e;
+Three rules define the look:
 
-  /* Text Colors */
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-subtle: #64748b;
+1. **Ink edges, not shadows.** Cards and buttons are drawn with a 2px ink border
+   and a hard offset block beneath them, like a sticker on paper. Blur-based
+   drop shadows are reserved for floating chrome.
+2. **One accent per module.** Colour carries navigation meaning; it is not
+   decoration. Wrapping any subtree in `.accent-violet` / `.accent-coral` /
+   `.accent-mint` / `.accent-sky` recolours every button, ring and badge inside
+   it without a single prop being passed down.
+3. **Numbers are typographic events.** Prices, seat counts and timers are set in
+   a monospace face with tabular figures, and they *animate* to new values, so a
+   change arriving from another device is legible as something that happened.
 
-  /* Effects */
-  --backdrop-blur: blur(14px);
-  --radius-lg: 16px;
-  --radius-md: 10px;
-  --radius-sm: 6px;
-  --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.25);
-}
-```
+### Why light is the default
+
+Classroom projectors and shared displays wash out dark UIs badly. The default is
+light so the demo survives whatever room it lands in; dark mode is one tap away
+in the navbar and persists per browser.
 
 ---
 
-## 3. Platform-Specific Form Factor Guidelines
+## 2. Token layer (`client/src/styles/tokens.css`)
 
-### A. Web Application (Target: Laptop / Desktop)
-- **Navigation**: Top sticky glass navbar with active module pills, live search bar, user status pill, and notification drawer.
-- **Grid Layout**: Multi-column responsive layout (2-column or 3-column masonry feed on large viewports `1024px+`).
-- **Interactions**: Hover elevation states, keyboard shortcuts (`/` for search, `Esc` to close modals), desktop modal dialogs.
-- **Data Density**: Higher density tables/lists with inline action buttons.
+Both themes are the **same declarations resolving different variables**. No
+component file contains a theme conditional. Dark mode is applied by setting
+`data-theme="dark"` on `<html>`, which an inline script in `index.html` does
+before first paint so there is no flash.
 
-### B. Android App (Target: Mobile)
-- **Navigation**: Fixed bottom navigation bar (Home/Connect, Bid, Ride, Nearby, Profile) + top header with notification bell.
-- **Layout**: Single-column vertical scroll with thumb-reachable touch targets (minimum `48px` tap targets).
-- **Interactions**: Bottom action sheets for bidding/joining rides, pull-to-refresh feeds, floating action buttons (FAB) for "New Post" or "Post Ride".
-- **Real-Time Indicators**: Floating status banners / snackbars for live updates (`"New highest bid: ₹1,200"`).
+### Accents
+
+| Token | Light | Dark | Module |
+|---|---|---|---|
+| `--violet` | `#6E56F8` | `#8B78FF` | CampusConnect |
+| `--coral` | `#FF6B35` | `#FF854F` | CampusBid |
+| `--amber` | `#F59E0B` | `#FBBF24` | CampusSkills |
+| `--emerald` | `#10B981` | `#34D399` | CampusTasks |
+| `--mint` | `#12B886` | `#2BD9A5` | CampusRide & Events |
+| `--sky` | `#0EA5E9` | `#38BDF8` | CampusNearby |
+| `--sun` | `#FFB703` | `#FFC53D` | warnings, scarcity |
+| `--rose` | `#F43F5E` | `#FB7185` | errors, outbid |
+
+`--accent` / `--accent-soft` / `--on-accent` are the indirection layer. **Always
+style against `--accent`, never a named hue**, so a component works in any
+module scope.
+
+### Mobile Touch & Responsive Guidelines
+- `.scroll-x`: Used on category pills and segmented bars for smooth horizontal scrolling without layout breaking.
+- `.card-pop`: Solid 2px ink borders, hard offset drop shadows (`--shadow-hard`), and zero top colored lines for a unified, clean aesthetic across every page.
+- `Modal`: Sits at `z-index: 2000` as a bottom drawer on mobile with safe-area bottom padding.
+- `MobileTabBar`: Fixed thumb-reachable bottom bar at `z-index: 90`.
+
+### Surfaces & ink
+
+| Token | Light | Dark |
+|---|---|---|
+| `--canvas` | `#FDFBF5` | `#0C0B10` |
+| `--surface` | `#FFFFFF` | `#17151F` |
+| `--surface-2` | `#FBF8F1` | `#1E1B29` |
+| `--surface-inset` | `#F3EFE4` | `#100E17` |
+| `--ink` | `#17150F` | `#F6F4FF` |
+| `--ink-soft` | `#58524A` | `#A7A0BE` |
+| `--ink-faint` | `#8E877A` | `#6E6788` |
+| `--line` | `rgba(23,21,15,.12)` | `rgba(255,255,255,.09)` |
+| `--line-strong` | `rgba(23,21,15,.88)` | `rgba(255,255,255,.24)` |
+
+### Elevation — the one place the themes differ in kind
+
+`--shadow-hard` is a **4px offset ink block** in light and collapses to a
+**rim + soft glow** in dark. Same token, same class, physically different light.
+This is why `.card-pop` needs no theme branch.
+
+### Type
+
+| Role | Family | Notes |
+|---|---|---|
+| Display | Bricolage Grotesque | Headings, brand, big numerals |
+| Body | Plus Jakarta Sans | All prose and UI text |
+| Numeric | JetBrains Mono | Prices, seats, timers, codes, promo codes |
+
+Scale is fluid (`clamp()`): `--t-hero`, `--t-display`, `--t-title`,
+`--t-heading`, `--t-body`, `--t-small`, `--t-micro`.
 
 ---
 
-## 4. UI Component Specs by Module
+## 3. Motion system (`client/src/lib/motion.js`)
 
-### A. CampusConnect (Community Discussion)
-- **Feed Card**: Post author (or Anonymous badge), timestamp, hostel/department pill tag, main content body, upvote/downvote action count, comment counter.
-- **Post Creator**: 
-  - *Web*: Centered glass modal with markdown toolbar and category selector.
-  - *Mobile*: Bottom slide-up drawer with quick-tap category pills.
-- **Filter Bar**: Horizontal pill filters ("All Topics", "Hostel A", "CS Dept", "Events").
+Every animation pulls its spring from one shared vocabulary. That is what makes
+four independently-built modules feel like one object.
 
-### B. CampusBid (Student Marketplace)
-- **Item Listing Card**: Image container with badge ("Active", "Closing Soon"), title, starting price vs. current highest bid display, bid count, "Place Bid" action button.
-- **Bidding Drawer / Modal**: Real-time highest bidder notice, fast increment buttons (+₹50, +₹100, +₹500), manual custom bid input, timer countdown.
-- **Status Badges**:
-  - `Active`: Emerald green pulse dot.
-  - `Sold`: Slate gray filled badge.
-  - `Outbid`: Rose red warning alert.
+| Spring | Use |
+|---|---|
+| `spring.snappy` | Anything the user directly caused |
+| `spring.soft` | Things that move on their own |
+| `spring.bouncy` | Small celebratory pops (toggles, copy confirmation) |
+| `spring.layout` | Shared `layoutId` transitions — over-damped, never overshoots |
 
-### C. CampusRide & Events (Carpool & Campus Gathering)
-- **Ride Card**: Departure point → Destination route arrow, departure time tag, driver verified avatar, price per seat, **Live Seat Counter Pill** (e.g., `2 / 4 seats left`).
-- **Join Ride Drawer**: Passenger count picker, instant socket seat update feedback.
-- **Event Card**: Banner thumbnail, event title, venue tag, date/time, "I'm Going" RSVP counter button.
+**Scroll physics** — `useSmoothScroll()` in `lib/hooks.js` runs Lenis on a rAF
+loop. It drives real `window.scrollY`, so `useScroll`, IntersectionObserver and
+anchors all keep working. Overlays call `lockScroll(true)` to freeze it;
+scrollable regions inside a dialog carry `data-lenis-prevent`.
 
-### D. CampusNearby (Local Discovery & Partner Deals)
-- **Deal / Feed Card**: Partner verification badge ("Official Partner" vs "Student Community"), discount percentage highlight tag (e.g., `20% OFF`), distance badge (`0.5 km away`), coupon code copy button.
+**Signature interactions**
+
+- Sticky scrollytelling on the landing page: scroll progress *selects* which
+  module panel is on screen rather than just moving past it.
+- Hero parallax at three depths (copy, sub-copy, cards).
+- `layoutId` navigation indicator: one element physically travels between tabs.
+- Magnetic buttons (`useMagnetic`) and cursor tilt on cards (`useTilt`).
+- `useCountUp` rolls every live number; `confetti.js` fires only on a real
+  successful bid.
+
+**Reduced motion is honoured throughout.** Lenis does not initialise, magnetic
+and tilt hooks no-op, confetti is skipped, and CSS animations collapse.
 
 ---
 
-## 5. Handoff & Consistency Rules
+## 4. Component classes (`client/src/styles/components.css`)
 
-1. **Shared Token Source**: Mobile app styles (`StyleSheet.create`) must map 1:1 to the color hex values defined in `--bg-primary`, `--primary-500`, `--accent-cyan`, etc.
-2. **Interactive Feedback**: Always include skeleton loader states, empty search/filter states, and toast notifications for user actions (e.g., "Bid Placed Successfully!").
-3. **Cross-Platform Parity**: A feature present on the web dashboard must be seamlessly accessible on the Android mobile app with mobile-optimized UX.
+| Class | Purpose |
+|---|---|
+| `.card` | Standard content surface, soft shadow |
+| `.card-pop` | Signature slab — ink edge + offset block. Add `.is-interactive` for press physics |
+| `.card-glass` | Blurred chrome (navbar, mobile tab bar) |
+| `.card-inset` | Recessed panel — price blocks, comment bubbles |
+| `.card-topline` | Accent hairline along the top edge |
+| `.btn` + `-primary` / `-ink` / `-ghost` / `-soft`, `-sm` / `-lg` / `-icon` / `-block` | Buttons |
+| `.chip` | Filter pills (`data-active`) |
+| `.badge`, `.badge-outline` | Status and metadata |
+| `.dot-live` | Pulsing realtime indicator |
+| `.input`, `.field`, `.field-label`, `.switch` | Forms |
+| `.skel` | Shimmer skeleton, shaped like the real card |
+| `.meter`, `.marquee`, `.empty`, `.rule`, `.spin` | Utilities |
+
+---
+
+## 5. Platform form factors
+
+### Web (laptop / desktop)
+Sticky glass navbar with module pills and the theme toggle; `1180px` max shell;
+`auto-fill minmax(330px, 1fr)` card grid; hover elevation and cursor tilt;
+number keys `1`–`4` jump between modules during a demo; `Esc` closes overlays.
+
+### Mobile (< 860px, and the Android app)
+The desktop pills are replaced by a fixed bottom tab bar with 48px minimum tap
+targets. **Modals become bottom sheets you can throw downward to dismiss** — the
+`Modal` component switches behaviour on its own via `useIsMobile()`. Safe-area
+insets are respected on every fixed element.
+
+The Android app must map its `StyleSheet` values 1:1 to the hex values in the
+tables above.
+
+---
+
+## 6. Rules for anyone adding UI
+
+1. Never hard-code a colour. If you need one that does not exist, add a token.
+2. Style against `--accent`, not a named hue, unless the colour carries fixed
+   semantics (`--rose` for errors, `--sun` for scarcity).
+3. Every list needs three states: skeleton, empty, and error. `SkeletonGrid` and
+   `EmptyState` exist in `components/ui.jsx` — use them.
+4. Every mutation is optimistic **and rolls back on failure**. Never leave a lie
+   on screen.
+5. Never invent a spring inline. Import one from `lib/motion.js`.
+6. If it moves, check it under `prefers-reduced-motion: reduce`.

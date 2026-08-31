@@ -9,58 +9,41 @@
 - **Project Name**: CampusSync ("One app for everything that happens on campus")
 - **Course Context**: CPI (Creativity, Problem Solving & Innovation) | Team of 8
 - **Platform Strategy**: 
-  - **Part 1 — Website**: Optimized for Laptop / Desktop screens with rich responsive dashboards.
-  - **Part 2 — Android Mobile App**: Optimized for Android mobile devices on-the-go with bottom navigation and quick touch actions.
-  - **Single Shared Backend & Database**: Both clients consume the identical Node.js + Express REST API, PostgreSQL/Supabase database, and real-time Socket.io events.
-- **Core Modules**:
-  1. **CampusConnect**: Verified community discussion feed, topic/department filtering, anonymous/named post options, comment threads.
-  2. **CampusBid**: Student marketplace with live item listings, bid placement, current highest bid validation, and listing status management.
-  3. **CampusRide & Events**: Carpool sharing with live seat-count tracking, event creation, and campus discovery.
-  4. **CampusNearby**: Local discovery feed featuring events, student discounts, partner deals, and community posts.
+  - **Part 1 — Website**: Optimized for Laptop / Desktop screens with rich responsive dashboards (Hosted on Vercel).
+  - **Part 2 — Android Mobile App**: Optimized for Android mobile devices on-the-go with bottom navigation and quick touch actions (Built via Expo / Expo EAS, zero Android Studio required).
+  - **Single Shared Backend & Database**: Both clients consume the identical Node.js + Express REST API, **Render Managed PostgreSQL database**, and real-time Socket.io events.
+- **Core 7 Pillars (6 Dashboard Tabs + Auth)**:
+  1. **CampusAuth**: College email OTP verification (`@college.edu`), JWT issuance, 60s cooldown, 5-attempt brute-force protection.
+  2. **CampusConnect**: Verified community discussion feed, topic/department filtering, anonymous/named post options, comment threads, upvotes & downvotes.
+  3. **CampusBid & Marketplace**: Student second-hand store (books, electronics, furniture) + live auction bidding engine with atomic concurrency guard.
+  4. **CampusSkills**: Skill-sharing network for 1-on-1 tutoring, coding, design, music, and peer exchange.
+  5. **CampusTasks**: Micro-task marketplace for campus errands (printouts, moving, food/parcel delivery) with atomic task claim.
+  6. **CampusRide & Events**: Carpool sharing with overbooking-safe atomic seat decrements and campus event discovery.
+  7. **CampusNearby**: Local discovery feed featuring student discounts, partner deals, and promo codes.
 
 ---
 
-## 2. Team Roster & Role Assignments
+## 2. Decision Log
 
-| Role ID | Owner Title | Key Focus Area & Deliverables |
-|---|---|---|
-| **Member 1** | Project/Product Lead | Requirements, cross-platform architecture, feature prioritization, tickets, daily standups. |
-| **Member 2** | UI/UX Designer | User flows for Laptop (Web) & Mobile (Android), unified design tokens in `docs/design.md`. |
-| **Member 3** | Web Frontend Lead | Web client (`client/`) implementation for Laptop/Desktop — **CampusConnect** & **CampusRide**. |
-| **Member 4** | Web Frontend Dev | Web client (`client/`) implementation for Laptop/Desktop — **CampusBid** & **CampusNearby**. |
-| **Member 5** | Backend Developer 1 | College email + OTP campus verification, JWT auth, **CampusConnect** & **CampusRide & Events** APIs. |
-| **Member 6** | Backend Developer 2 | Database schema design, **CampusBid** bidding logic (concurrency, validation) & **CampusNearby** APIs. |
-| **Member 7** | Mobile & DevOps | Android App (`app/` React Native/Expo), cloud deployment (Railway/Render + Vercel + Supabase), EAS APK builds. |
-| **Member 8** | QA, Security & Docs | Cross-platform sync testing (Web vs Android), auth security audit, documentation suite maintenance. |
+| Date | Category | Decision Summary | Rationale |
+|---|---|---|---|
+| 2026-08-30 | Concurrency | Adopted single atomic guarded SQL updates for Bidding, Ride booking, and Task claims. | Eliminates check-then-act race conditions; ensures atomic seat decrement, task claiming, and highest bid consistency under high concurrent student load. |
+| 2026-08-30 | Modules | Expanded backend from 4 to 7 core pillars with dedicated Skill Sharing (`/api/skills`) and Micro-tasks (`/api/tasks`). | Directly addresses all student problem statement items (errands, peer skill tutoring, second-hand marketplace). |
+| 2026-08-30 | Security & Auth | Added IP rate-limiting, 60s email cooldown, and 5-attempt lockout on OTP verification. | Prevents OTP brute-forcing and email spam attacks. |
+| 2026-08-30 | Token Storage | Adopted `expo-secure-store` exclusively for JWT on Mobile, `localStorage` on Web. | Provides secure hardware-backed keychain storage on Android without mixing AsyncStorage. |
+| 2026-08-30 | CORS Policy | Configured multi-origin CORS supporting Vite, React, Expo, and production URLs. | Allows seamless local dev and production cross-origin communication between web and mobile apps. |
+| 2026-08-30 | Hosting Topology | Server on **Render.com (Web Service)**, Database on **Render Managed PostgreSQL**, Web on **Vercel**, Android App on **Expo EAS**. | Colocating the Node.js server and PostgreSQL database on Render ensures zero network latency and private internal networking. Vercel provides fast global CDN for the web app. |
 
 ---
 
 ## 3. Current Project State
 
-- **Phase**: Phase 1 — Initial Design, Architecture & Workspace Setup
-- **Active Sprint Focus**: Scaffold web client, backend server, and mobile app baseline; align shared API contracts and database schema.
+- **Phase**: Phase 3 — Full Integration (Frontend + Mobile + Backend)
 - **Key Milestones Achieved**:
-  - [x] Initial workspace structure established (`client/`, `server/`, `docs/`).
-  - [x] Complete documentation suite created and updated with dual-platform strategy (`memory.md`, `design.md`, `architecture.md`, `implementation.md`).
-  - [x] Hosting strategy finalized (Railway for API/Sockets, Supabase/PostgreSQL for DB, Vercel for Web, EAS for Android App).
-
----
-
-## 4. Decision Log
-
-| Date | Category | Decision Summary | Rationale |
-|---|---|---|---|
-| 2026-08-30 | Product Strategy | Split client delivery into Web (Laptop) and Android App (Mobile) with single shared backend & DB. | Caters to how students actually access campus utilities (laptops in hostels/classes, mobile phones while commuting and attending events). |
-| 2026-08-30 | Technology Stack | React + Vite for Web, React Native (Expo) for Android App, Node.js + Express for Backend. | Maximizes code and skill reuse across web and mobile frontend while delivering native mobile performance. |
-| 2026-08-30 | Hosting Topology | Server on Railway/Render, DB on Supabase/PostgreSQL, Web on Vercel, Android App on Expo EAS. | Provides zero-downtime WebSocket support for Socket.io, high availability for the shared database, and global CDN delivery for the web app. |
-| 2026-08-30 | Security & Auth | Campus Verification via JWT + College Email OTP. | Ensures campus-only trust layer for marketplace, rides, and discussions across both Web and Android. |
-| 2026-08-30 | Real-Time Engine | Socket.io integrated for cross-platform live seat-counts & bid updates. | Instant multi-device sync between web laptop users and Android smartphone users. |
-
----
-
-## 5. Next Immediate Actions
-
-1. Maintain and reference the 4 documents in `docs/` throughout every development cycle.
-2. Complete Web client (`client/`) and Backend (`server/`) mock integration.
-3. Initialize `app/` directory with Expo React Native template and shared API service layer.
-4. Execute cross-platform testing to verify that real-time Socket events trigger simultaneous UI updates on both Web and Mobile.
+  - [x] Workspace structure established (`client/`, `server/`, `docs/`, `app/`).
+  - [x] Documentation suite updated (`memory.md`, `design.md`, `architecture.md`, `implementation.md`).
+  - [x] All 7 backend modules implemented with controllers, routes, and socket broadcasters.
+  - [x] Dual-mode Database Adapter (`dbAdapter.js`) + Render PostgreSQL schema (`schema.sql`).
+  - [x] Automated test suite (`test-api.js`) passing 33/33 tests with 0 failures.
+  - [x] Web Client 2-theme design system, scroll physics, contexts, and modals.
+  - [x] Mobile App (React Native/Expo) Milestone 1 complete with SecureStore auth & CampusConnect.

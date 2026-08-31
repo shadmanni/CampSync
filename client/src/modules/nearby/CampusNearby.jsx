@@ -1,80 +1,262 @@
-import React, { useState, useEffect } from "react";
-import { Compass, Tag, CheckCircle2, Copy, Check } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { BadgeCheck, Check, Copy, MapPin, Users, Compass, CalendarClock } from 'lucide-react';
+import { EmptyState, SectionHead, SkeletonGrid } from '../../components/ui.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
+import { api } from '../../lib/api.js';
+import { listItemVariants, spring } from '../../lib/motion.js';
 
-export const CampusNearby = () => {
+const SOURCES = [
+  { id: 'all', label: 'Everything' },
+  { id: 'partner', label: 'Official partners' },
+  { id: 'community', label: 'Found by students' },
+];
+
+export function CampusNearby() {
+  const toast = useToast();
+
   const [deals, setDeals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [source, setSource] = useState('all');
+  const [category, setCategory] = useState('All');
   const [copiedId, setCopiedId] = useState(null);
 
-  useEffect(() => {
-    fetchDeals();
-  }, []);
-
-  const fetchDeals = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/nearby/deals");
-      const data = await res.json();
-      setDeals(data);
+      setDeals(await api.getDeals());
     } catch (err) {
-      console.error("Failed to fetch deals:", err);
+      toast.error('Could not load nearby deals', { detail: err.message });
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const handleCopyCode = (id, code) => {
-    navigator.clipboard.writeText(code);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const categories = useMemo(
+    () => ['All', ...Array.from(new Set(deals.map((d) => d.category).filter(Boolean)))],
+    [deals],
+  );
+
+  const visible = deals.filter((d) => {
+    if (source === 'partner' && !d.isPartner) return false;
+    if (source === 'community' && d.isPartner) return false;
+    if (category !== 'All' && d.category !== category) return false;
+    return true;
+  });
+
+  async function copyCode(deal) {
+    try {
+      await navigator.clipboard.writeText(deal.code);
+      setCopiedId(deal.id);
+      setTimeout(() => setCopiedId((id) => (id === deal.id ? null : id)), 2200);
+      toast.success(`${deal.code} copied`, { detail: `Show it at ${deal.businessName}.` });
+    } catch {
+      // Clipboard is blocked on insecure origins and in some in-app browsers.
+      toast.info(`Your code is ${deal.code}`, { detail: 'Copying is blocked here — note it down.' });
+    }
+  }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      <div>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: "700" }}>CampusNearby Local Discovery</h2>
-        <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-          Exclusive student discounts, partner offers & local campus hangouts.
-        </p>
-      </div>
+    <div className="accent-sky stack-lg">
+      <SectionHead
+        title="Student pricing, within walking distance"
+        subtitle="Deals from verified campus partners, plus the ones students found first. Codes are one tap away."
+      />
 
-      <div className="grid-cards">
-        {deals.map((deal) => (
-          <div key={deal.id} className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-                <span className="badge badge-emerald" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <CheckCircle2 size={12} />
-                  <span>{deal.isPartner ? "Official Campus Partner" : "Community Deal"}</span>
-                </span>
-                <span style={{ fontSize: "0.9rem", fontWeight: "800", color: "var(--accent-cyan)" }}>
-                  {deal.discountPercent}% OFF
-                </span>
-              </div>
-
-              <h3 style={{ fontSize: "1.1rem", fontWeight: "600", marginBottom: "4px" }}>{deal.title}</h3>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-main)", fontWeight: "500", marginBottom: "6px" }}>{deal.businessName}</p>
-              <p style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>📍 {deal.distance}</p>
-            </div>
-
-            <div style={{ borderTop: "1px solid var(--border-glass)", paddingTop: "14px", marginTop: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <span style={{ fontSize: "0.7rem", color: "var(--text-subtle)", display: "block" }}>Promo Code</span>
-                  <span style={{ fontSize: "0.95rem", fontWeight: "700", letterSpacing: "0.05em", color: "var(--accent-amber)" }}>
-                    {deal.code}
-                  </span>
-                </div>
-
+      {/* Filters */}
+      <div className="stack" style={{ gap: 12 }}>
+        <div className="scroll-x">
+          <div className="segmented">
+            {SOURCES.map((s) => {
+              const isActive = source === s.id;
+              return (
                 <button
-                  className="btn btn-secondary"
-                  onClick={() => handleCopyCode(deal.id, deal.code)}
-                  style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                  key={s.id}
+                  type="button"
+                  className={`segmented-item ${isActive ? 'active' : ''}`}
+                  onClick={() => setSource(s.id)}
                 >
-                  {copiedId === deal.id ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                  <span>{copiedId === deal.id ? "Copied!" : "Copy Code"}</span>
+                  {s.label}
                 </button>
-              </div>
-            </div>
+              );
+            })}
           </div>
-        ))}
+        </div>
+
+        {categories.length > 2 && (
+          <div className="scroll-x">
+            {categories.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className="chip"
+                data-active={category === c}
+                onClick={() => setCategory(c)}
+                style={{ position: 'relative', flexShrink: 0 }}
+              >
+                {category === c && (
+                  <motion.span
+                    layoutId="nearby-chip"
+                    transition={spring.layout}
+                    style={{
+                      position: 'absolute',
+                      inset: -1,
+                      borderRadius: 'var(--r-pill)',
+                      background: 'var(--ink)',
+                    }}
+                  />
+                )}
+                <span style={{ position: 'relative' }}>{c}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {loading ? (
+        <SkeletonGrid count={4} height={210} />
+      ) : visible.length === 0 ? (
+        <EmptyState
+          icon={Compass}
+          title="Nothing matches that filter"
+          hint="Try 'Everything', or a different category."
+        />
+      ) : (
+        <motion.div layout className="grid-cards">
+          <AnimatePresence mode="popLayout" initial={false}>
+            {visible.map((deal) => (
+              <DealCard
+                key={deal.id}
+                deal={deal}
+                copied={copiedId === deal.id}
+                onCopy={() => copyCode(deal)}
+              />
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      )}
     </div>
   );
-};
+}
+
+function DealCard({ deal, copied, onCopy }) {
+  return (
+    <motion.article
+      layout
+      variants={listItemVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      whileHover={{ y: -3 }}
+      transition={spring.snappy}
+      className="card-pop"
+      style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+    >
+      {/* Discount banner — the number is the whole point, so it gets the space. */}
+      <div
+        style={{
+          position: 'relative',
+          padding: '18px 20px 16px',
+          background: deal.isPartner ? 'var(--accent-soft)' : 'var(--surface-2)',
+          borderBottom: '2px solid var(--line-strong)',
+        }}
+      >
+        <div className="row-between" style={{ alignItems: 'flex-start', gap: 12 }}>
+          <span
+            className="badge"
+            style={
+              deal.isPartner
+                ? { background: 'var(--surface)', color: 'var(--accent)' }
+                : { background: 'var(--surface)', color: 'var(--ink-soft)' }
+            }
+          >
+            {deal.isPartner ? <BadgeCheck size={12} strokeWidth={2.8} /> : <Users size={12} strokeWidth={2.8} />}
+            {deal.isPartner ? 'Campus partner' : 'Found by a student'}
+          </span>
+
+          <p
+            className="t-num"
+            style={{
+              fontSize: 'clamp(1.9rem, 5vw, 2.5rem)',
+              lineHeight: 0.9,
+              color: deal.isPartner ? 'var(--accent)' : 'var(--ink)',
+              letterSpacing: '-0.04em',
+            }}
+          >
+            {deal.discountPercent}
+            <span style={{ fontSize: '0.44em', marginLeft: 2 }}>% off</span>
+          </p>
+        </div>
+      </div>
+
+      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ fontSize: '1rem', lineHeight: 1.32, marginBottom: 6 }}>{deal.title}</h3>
+          <p style={{ fontWeight: 700, fontSize: 'var(--t-small)' }}>{deal.businessName}</p>
+        </div>
+
+        <div className="row wrap" style={{ gap: 8 }}>
+          <span className="badge badge-outline">
+            <MapPin size={11} strokeWidth={2.6} />
+            {deal.distance}
+          </span>
+          {deal.validUntil && (
+            <span className="badge badge-outline">
+              <CalendarClock size={11} strokeWidth={2.6} />
+              {deal.validUntil}
+            </span>
+          )}
+        </div>
+
+        {/* Coupon stub */}
+        <button
+          type="button"
+          onClick={onCopy}
+          className="card-inset row-between"
+          aria-label={`Copy promo code ${deal.code}`}
+          style={{
+            padding: '11px 14px',
+            cursor: 'pointer',
+            width: '100%',
+            textAlign: 'left',
+            borderStyle: 'dashed',
+            borderWidth: 2,
+          }}
+        >
+          <span>
+            <span className="t-faint" style={{ display: 'block', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Promo code
+            </span>
+            <span className="t-num" style={{ fontSize: '1rem', letterSpacing: '0.06em' }}>
+              {deal.code}
+            </span>
+          </span>
+
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={copied ? 'done' : 'copy'}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={spring.bouncy}
+              className="row"
+              style={{
+                gap: 6,
+                fontSize: 'var(--t-micro)',
+                fontWeight: 700,
+                color: copied ? 'var(--mint)' : 'var(--ink-soft)',
+              }}
+            >
+              {copied ? <Check size={14} strokeWidth={3} /> : <Copy size={14} strokeWidth={2.4} />}
+              {copied ? 'Copied' : 'Copy'}
+            </motion.span>
+          </AnimatePresence>
+        </button>
+      </div>
+    </motion.article>
+  );
+}
