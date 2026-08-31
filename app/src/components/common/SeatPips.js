@@ -1,41 +1,41 @@
-import React from "react";
-import { View, StyleSheet } from "react-native";
-import { colors } from "../../theme/theme";
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { colors } from '../../theme/theme';
 
-export const SeatPips = ({ total = 4, available = 2, accentColor = colors.mint }) => {
+/**
+ * SeatPips — Segmented meter for ride seats.
+ * Taken pips = faint ink (dimmed). Free pips = module accent (vivid).
+ * Matches website's SeatPips component exactly.
+ */
+export function SeatPips({ total, available, accent = colors.mint }) {
   const taken = Math.max(0, total - available);
 
   return (
-    <View style={styles.container}>
-      {Array.from({ length: total }, (_, i) => {
-        const isTaken = i < taken;
-        return (
-          <View
-            key={i}
-            style={[
-              styles.pip,
-              {
-                backgroundColor: isTaken ? colors.inkFaint : accentColor,
-                opacity: isTaken ? 0.35 : 1,
-                transform: [{ scale: isTaken ? 1 : 0.9 }]
-              }
-            ]}
-          />
-        );
-      })}
+    <View style={styles.row}>
+      {Array.from({ length: total }, (_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.pip,
+            i < taken
+              ? { backgroundColor: colors.inkFaint, opacity: 0.35 }
+              : { backgroundColor: accent, opacity: 1 },
+          ]}
+        />
+      ))}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   pip: {
     width: 9,
     height: 9,
-    borderRadius: 3
-  }
+    borderRadius: 3,
+  },
 });

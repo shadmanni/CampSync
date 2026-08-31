@@ -2,19 +2,17 @@ import axios from "axios";
 import { storage } from "./storage";
 import { Platform } from "react-native";
 
-// In development, default to localhost on Web or local network IP / emulator host on Android
 const getBaseUrl = () => {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:5000/api';
+  }
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  if (Platform.OS === "web" && typeof window !== "undefined" && window.location) {
-    const host = window.location.hostname || "localhost";
-    return `http://${host}:5000/api`;
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5000/api';
   }
-  if (Platform.OS === "android") {
-    return "http://10.0.2.2:5000/api";
-  }
-  return "http://localhost:5000/api";
+  return 'http://localhost:5000/api';
 };
 
 const api = axios.create({

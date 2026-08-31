@@ -1,22 +1,22 @@
-import api from "./api";
+import api from './api';
 
 export const tasksService = {
-  async getTasks(status = "ALL", category = "All") {
+  async getTasks(status, category) {
     const params = {};
-    if (status && status !== "ALL") params.status = status;
-    if (category && category !== "All") params.category = category;
-    return await api.get("/tasks", { params });
+    if (status && status !== 'All') params.status = status;
+    if (category && category !== 'All') params.category = category;
+    return await api.get('/tasks', { params });
   },
 
-  async createTask(taskData) {
-    return await api.post("/tasks", taskData);
+  async createTask({ title, description, category, reward, pickupLocation, dropLocation, deadline }) {
+    return await api.post('/tasks', { title, description, category, reward, pickupLocation, dropLocation, deadline });
   },
 
-  async claimTask(taskId) {
-    return await api.post(`/tasks/${taskId}/claim`);
+  async acceptTask(id) {
+    return await api.post(`/tasks/${id}/accept`);
   },
 
-  async completeTask(taskId) {
-    return await api.post(`/tasks/${taskId}/complete`);
-  }
+  async completeTask(id) {
+    return await api.post(`/tasks/${id}/complete`);
+  },
 };

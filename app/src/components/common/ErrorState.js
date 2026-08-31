@@ -1,65 +1,43 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { AlertCircle, RotateCcw } from "lucide-react-native";
-import { colors, radii, spacing, typography } from "../../theme/theme";
-import { PopCard } from "./PopCard";
-import { PopButton } from "./PopButton";
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { AlertCircle } from 'lucide-react-native';
+import { colors, spacing } from '../../theme/theme';
+import { PopButton } from './PopButton';
 
-export const ErrorState = ({ title = "Something went wrong", message, onRetry }) => {
+/**
+ * ErrorState — Friendly error display with retry.
+ * Uses warm Campus Pop tokens.
+ */
+export function ErrorState({ message = 'Something went wrong', onRetry }) {
   return (
-    <PopCard style={styles.card} variant="inset">
-      <View style={styles.iconCircle}>
-        <AlertCircle size={24} color={colors.rose} />
-      </View>
-      <Text style={styles.title}>{title}</Text>
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+    <View style={styles.container}>
+      <AlertTriangle size={28} color={colors.rose} strokeWidth={1.8} />
+      <Text style={styles.message}>{message}</Text>
       {onRetry && (
         <PopButton
-          title="Try Again"
-          onPress={onRetry}
-          variant="surface"
+          title="Try again"
+          accent={colors.violet}
+          variant="outline"
           size="sm"
-          icon={<RotateCcw size={14} color={colors.ink} />}
-          style={styles.retryBtn}
+          onPress={onRetry}
         />
       )}
-    </PopCard>
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  card: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xl,
-    marginVertical: spacing.lg,
-    borderColor: colors.roseSoft
-  },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.roseSoft,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing.md
-  },
-  title: {
-    ...typography.heading,
-    color: colors.ink,
-    textAlign: "center",
-    marginBottom: 4
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: spacing.containerPadding,
+    gap: 12,
   },
   message: {
-    ...typography.body,
-    color: colors.inkSoft,
-    textAlign: "center",
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.md
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.ink,
+    textAlign: 'center',
   },
-  retryBtn: {
-    marginTop: spacing.xs
-  }
 });

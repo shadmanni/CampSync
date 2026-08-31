@@ -1,30 +1,23 @@
-import api from "./api";
+import api from './api';
 
 export const rideService = {
-  async getRides(destination = "", search = "") {
-    const params = {};
-    if (destination && destination !== "All" && destination !== "All Rides") params.destination = destination;
-    if (search) params.search = search;
-    return await api.get("/ride/rides", { params });
+  async getRides() {
+    return await api.get('/ride/rides');
   },
 
-  async createRide(rideData) {
-    return await api.post("/ride/rides", rideData);
+  async bookSeat(rideId, passengerName, seatsCount = 1) {
+    return await api.post(`/ride/rides/${rideId}/join`, { passengerName, seatsCount });
   },
 
-  async bookSeat(rideId, seats = 1, passengerName = "") {
-    return await api.post(`/ride/rides/${rideId}/book`, { seats, passengerName });
+  async createRide({ origin, destination, departureTime, totalSeats, pricePerSeat }) {
+    return await api.post('/ride/rides', { origin, destination, departureTime, totalSeats, pricePerSeat });
   },
 
   async getEvents() {
-    return await api.get("/ride/events");
+    return await api.get('/ride/events');
   },
 
   async rsvpEvent(eventId) {
     return await api.post(`/ride/events/${eventId}/rsvp`);
   },
-
-  async createEvent(eventData) {
-    return await api.post("/ride/events", eventData);
-  }
 };

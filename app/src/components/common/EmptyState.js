@@ -1,59 +1,44 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { colors, radii, spacing, typography } from "../../theme/theme";
-import { PopCard } from "./PopCard";
-import { PopButton } from "./PopButton";
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { colors, radii, spacing } from '../../theme/theme';
 
-export const EmptyState = ({
-  icon,
-  title,
-  description,
-  actionTitle,
-  onAction,
-  accentColor = colors.violet,
-  accentVariant = "violet"
-}) => {
+/**
+ * EmptyState — Centered hint when a feed is empty.
+ * Styled with Campus Pop warm tokens.
+ */
+export function EmptyState({ icon: Icon, title, hint, action }) {
   return (
-    <PopCard style={styles.card} variant="inset">
-      {icon && <View style={styles.iconContainer}>{icon}</View>}
-      <Text style={styles.title}>{title}</Text>
-      {description && <Text style={styles.description}>{description}</Text>}
-      {actionTitle && onAction && (
-        <PopButton
-          title={actionTitle}
-          onPress={onAction}
-          variant={accentVariant}
-          size="sm"
-          style={styles.actionBtn}
-        />
+    <View style={styles.container}>
+      {Icon && (
+        <Icon size={30} color={colors.inkFaint} strokeWidth={1.6} />
       )}
-    </PopCard>
+      <View style={{ alignItems: 'center' }}>
+        <Text style={styles.title}>{title}</Text>
+        {hint && <Text style={styles.hint}>{hint}</Text>}
+      </View>
+      {action}
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  card: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xl,
-    marginVertical: spacing.lg
-  },
-  iconContainer: {
-    marginBottom: spacing.md,
-    opacity: 0.85
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: spacing.containerPadding,
+    gap: 12,
   },
   title: {
-    ...typography.heading,
-    textAlign: "center",
-    marginBottom: spacing.xs
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.ink,
+    textAlign: 'center',
   },
-  description: {
-    ...typography.body,
-    textAlign: "center",
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.md
+  hint: {
+    fontSize: 13,
+    color: colors.inkSoft,
+    textAlign: 'center',
+    marginTop: 4,
   },
-  actionBtn: {
-    marginTop: spacing.xs
-  }
 });

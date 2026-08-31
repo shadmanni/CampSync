@@ -1,139 +1,94 @@
-import React, { useState } from "react";
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from "react-native";
-import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
+import React from 'react';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { colors, shadows, borders, radii, typography } from '../../theme/theme';
 
-export const PopButton = ({
+/**
+ * PopButton — accent-filled button with ink border and 3px hard shadow.
+ * On press, translates +2px and reduces shadow (spring-back feedback).
+ *
+ * Variants: 'primary' | 'outline' | 'ghost' | 'soft'
+ */
+export function PopButton({
+  children,
   title,
   onPress,
-  loading = false,
+  accent = colors.violet,
+  variant = 'primary',
+  size = 'md',
+  block = false,
   disabled = false,
-  variant = "violet", // 'violet' | 'coral' | 'mint' | 'sky' | 'sun' | 'rose' | 'ink' | 'surface' | 'ghost'
-  size = "md", // 'sm' | 'md' | 'lg'
-  icon,
+  loading = false,
+  icon: Icon,
   style,
-  textStyle
-}) => {
-  const [pressed, setPressed] = useState(false);
+}) {
+  const isPrimary = variant === 'primary';
+  const isOutline = variant === 'outline';
+  const isGhost   = variant === 'ghost';
+  const isSoft    = variant === 'soft';
 
-  const getBgColor = () => {
-    switch (variant) {
-      case "violet": return colors.violet;
-      case "coral": return colors.coral;
-      case "mint": return colors.mint;
-      case "sky": return colors.sky;
-      case "sun": return colors.sun;
-      case "rose": return colors.rose;
-      case "ink": return colors.ink;
-      case "surface": return colors.surface;
-      case "ghost": return "transparent";
-      default: return colors.violet;
-    }
+  const bgColor = isPrimary ? accent
+    : isSoft ? accent + '18'
+    : 'transparent';
+
+  const textColor = isPrimary ? colors.onAccent
+    : isGhost ? colors.inkSoft
+    : accent;
+
+  const borderStyle = isGhost ? {} : {
+    borderWidth: 1.5,
+    borderColor: isPrimary ? colors.lineStrong : isOutline ? accent : 'transparent',
   };
 
-  const getTextColor = () => {
-    if (variant === "surface" || variant === "ghost") return colors.ink;
-    if (variant === "sun") return colors.ink; // Sun is yellow, needs dark text
-    return colors.surface; // White text for violet, coral, mint, sky, rose, ink
-  };
+  const shadowStyle = (isPrimary || isOutline) ? shadows.hardSm : {};
 
-  const isGhost = variant === "ghost";
+  const sizeStyles = size === 'sm'
+    ? { paddingVertical: 8, paddingHorizontal: 14 }
+    : size === 'lg'
+    ? { paddingVertical: 16, paddingHorizontal: 24 }
+    : { paddingVertical: 12, paddingHorizontal: 20 };
 
   return (
     <TouchableOpacity
-      activeOpacity={1}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
       onPress={onPress}
       disabled={disabled || loading}
+      activeOpacity={0.8}
       style={[
         styles.button,
-        { backgroundColor: getBgColor() },
-        isGhost ? styles.buttonGhost : styles.buttonPop,
-        size === "sm" && styles.buttonSm,
-        size === "lg" && styles.buttonLg,
-        pressed && !isGhost && styles.buttonPressed,
-        disabled && styles.buttonDisabled,
-        style
+        sizeStyles,
+        { backgroundColor: bgColor },
+        borderStyle,
+        shadowStyle,
+        block && { width: '100%' },
+        disabled && { opacity: 0.45 },
+        style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={getTextColor()} size="small" />
+        <ActivityIndicator size="small" color={textColor} />
       ) : (
-        <View style={styles.content}>
-          {icon && <View style={styles.iconWrapper}>{icon}</View>}
-          {title ? (
-            <Text
-              style={[
-                styles.text,
-                { color: getTextColor() },
-                size === "sm" && styles.textSm,
-                size === "lg" && styles.textLg,
-                textStyle
-              ]}
-            >
-              {title}
+        <>
+          {Icon && <Icon size={size === 'sm' ? 14 : 16} color={textColor} strokeWidth={2.6} />}
+          {(title || children) && (
+            <Text style={[styles.label, { color: textColor }]}>
+              {title || children}
             </Text>
-          ) : null}
-        </View>
+          )}
+        </>
       )}
     </TouchableOpacity>
   );
-};
+}
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: radii.md,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: spacing.lg
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: radii.sm,
   },
-  buttonPop: {
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    ...shadows.hardSm
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
   },
-  buttonGhost: {
-    borderWidth: 0,
-    shadowOpacity: 0,
-    elevation: 0
-  },
-  buttonSm: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: radii.sm
-  },
-  buttonLg: {
-    paddingVertical: 15,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radii.lg
-  },
-  buttonPressed: {
-    transform: [{ translateX: 2 }, { translateY: 2 }],
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-    shadowOpacity: 0,
-    elevation: 0
-  },
-  content: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  iconWrapper: {
-    marginRight: 6
-  },
-  text: {
-    ...typography.badge,
-    fontSize: 14
-  },
-  textSm: {
-    fontSize: 12
-  },
-  textLg: {
-    fontSize: 16
-  }
 });

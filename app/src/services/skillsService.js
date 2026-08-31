@@ -1,19 +1,19 @@
-import api from "./api";
+import api from './api';
 
 export const skillsService = {
-  async getSkills(category = "All", type = "ALL", search = "") {
+  async getSkills(category, type, search) {
     const params = {};
-    if (category && category !== "All") params.category = category;
-    if (type && type !== "ALL") params.type = type;
-    if (search) params.search = search;
-    return await api.get("/skills", { params });
+    if (category && category !== 'All') params.category = category;
+    if (type && type !== 'All') params.type = type;
+    if (search && search.trim()) params.search = search.trim();
+    return await api.get('/skills', { params });
   },
 
-  async getSkillById(id) {
-    return await api.get(`/skills/${id}`);
+  async createSkill({ title, description, category, type, pricing, contact }) {
+    return await api.post('/skills', { title, description, category, type, pricing, contact });
   },
 
-  async createSkill(skillData) {
-    return await api.post("/skills", skillData);
-  }
+  async deleteSkill(id) {
+    return await api.delete(`/skills/${id}`);
+  },
 };

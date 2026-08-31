@@ -85,14 +85,14 @@ export function Modal({ open, onClose, title, subtitle, children, footer, maxWid
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 150,
+            zIndex: 2000,
             display: 'flex',
             alignItems: isMobile ? 'flex-end' : 'center',
             justifyContent: 'center',
             padding: isMobile ? 0 : 'clamp(16px, 4vw, 40px)',
-            background: 'color-mix(in srgb, var(--ink) 46%, transparent)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
+            background: 'color-mix(in srgb, var(--ink) 56%, transparent)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
           }}
         >
           <motion.div
@@ -172,7 +172,7 @@ export function Modal({ open, onClose, title, subtitle, children, footer, maxWid
               // scroll region back out so long forms scroll normally inside it.
               data-lenis-prevent="true"
               style={{
-                padding: isMobile ? '0 20px 20px' : '0 24px 8px',
+                padding: isMobile ? '0 20px calc(28px + env(safe-area-inset-bottom))' : '0 24px 8px',
                 overflowY: 'auto',
                 overscrollBehavior: 'contain',
                 flex: 1,

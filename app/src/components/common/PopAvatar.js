@@ -1,33 +1,43 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { colors, radii, typography } from "../../theme/theme";
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { colors, moduleColors } from '../../theme/theme';
 
-const AVATAR_PALETTE = [
-  { text: colors.violet, bg: colors.violetSoft },
-  { text: colors.coral, bg: colors.coralSoft },
-  { text: colors.mint, bg: colors.mintSoft },
-  { text: colors.sky, bg: colors.skySoft },
-  { text: colors.rose, bg: colors.roseSoft },
-  { text: colors.sun, bg: colors.sunSoft }
+/**
+ * PopAvatar — Initials avatar with colour ring.
+ * Colour is derived from a simple name-hash (same algorithm as the website's avatarToken).
+ */
+
+const AVATAR_TOKENS = [
+  moduleColors.violet,
+  moduleColors.coral,
+  moduleColors.mint,
+  moduleColors.sky,
+  moduleColors.sun,
+  moduleColors.rose,
 ];
 
-export const PopAvatar = ({ name = "", anonymous = false, size = 38 }) => {
-  const getInitials = (n) => {
-    if (!n) return "CS";
-    const parts = n.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return n.slice(0, 2).toUpperCase();
-  };
+function hashName(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+}
 
-  const getColor = (n) => {
-    if (anonymous) return { text: colors.inkFaint, bg: colors.surfaceInset };
-    let hash = 0;
-    for (let i = 0; i < n.length; i++) hash = n.charCodeAt(i) + ((hash << 5) - hash);
-    const idx = Math.abs(hash) % AVATAR_PALETTE.length;
-    return AVATAR_PALETTE[idx];
-  };
+function getInitials(name = '') {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() || '?';
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
-  const colorScheme = getColor(name);
+export function PopAvatar({ name = '', anonymous = false, size = 38 }) {
+  const token = anonymous
+    ? colors.inkFaint
+    : AVATAR_TOKENS[hashName(name) % AVATAR_TOKENS.length];
+
+  const bgOpacity = '28'; // ~16% opacity hex
+  const borderOpacity = '60'; // ~38% opacity hex
 
   return (
     <View
@@ -36,35 +46,35 @@ export const PopAvatar = ({ name = "", anonymous = false, size = 38 }) => {
         {
           width: size,
           height: size,
-          borderRadius: anonymous ? radii.sm : size / 2,
-          backgroundColor: colorScheme.bg,
-          borderColor: colorScheme.text
-        }
+          borderRadius: anonymous ? size * 0.32 : size / 2,
+          backgroundColor: token + bgOpacity,
+          borderColor: token + borderOpacity,
+        },
       ]}
     >
       <Text
         style={[
-          styles.text,
+          styles.initials,
           {
-            color: colorScheme.text,
-            fontSize: size * 0.36
-          }
+            color: token,
+            fontSize: size * 0.36,
+          },
         ]}
       >
-        {anonymous ? "??" : getInitials(name)}
+        {anonymous ? '??' : getInitials(name)}
       </Text>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   avatar: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
   },
-  text: {
-    ...typography.badge,
-    fontWeight: "800"
-  }
+  initials: {
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
 });

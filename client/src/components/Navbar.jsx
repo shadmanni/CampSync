@@ -89,34 +89,16 @@ export function Navbar({ active, onNavigate, onBrandClick }) {
             CS
           </motion.span>
 
-          <span style={{ textAlign: 'left', lineHeight: 1.05 }}>
-            <span
-              style={{
-                display: 'block',
-                fontFamily: 'var(--font-display)',
-                fontWeight: 800,
-                fontSize: '1.06rem',
-                letterSpacing: '-0.035em',
-              }}
-            >
-              CampusSync
-            </span>
-            {!condensed && (
-              <motion.span
-                initial={{ opacity: 0, y: -3 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="t-faint hide-sm"
-                style={{
-                  display: 'block',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '0.6rem',
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                one app · whole campus
-              </motion.span>
-            )}
+          <span
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontWeight: 800,
+              fontSize: '1.06rem',
+              letterSpacing: '-0.035em',
+              color: 'var(--ink)',
+            }}
+          >
+            CampusSync
           </span>
         </button>
 
@@ -265,13 +247,13 @@ export function MobileTabBar({ active, onNavigate }) {
       aria-label="Modules"
       style={{
         position: 'fixed',
-        left: 12,
-        right: 12,
-        bottom: 'calc(12px + env(safe-area-inset-bottom))',
-        zIndex: 95,
+        left: 10,
+        right: 10,
+        bottom: 'calc(10px + env(safe-area-inset-bottom))',
+        zIndex: 90,
         display: 'flex',
-        gap: 4,
-        padding: 6,
+        gap: 2,
+        padding: '5px 4px',
         borderRadius: 'var(--r-pill)',
         background: 'var(--glass)',
         backdropFilter: 'var(--glass-blur)',
@@ -295,18 +277,19 @@ export function MobileTabBar({ active, onNavigate }) {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 3,
-              // 48px minimum tap target, per the design doc's mobile rules.
-              minHeight: 48,
               justifyContent: 'center',
-              padding: '6px 2px',
+              gap: 3,
+              minHeight: 46,
+              padding: '4px 2px',
               border: 0,
               borderRadius: 'var(--r-pill)',
-              background: 'none',
+              background: 'transparent',
               cursor: 'pointer',
               color: isActive ? m.color : 'var(--ink-faint)',
-              fontSize: '0.63rem',
-              fontWeight: 700,
+              fontSize: '0.62rem',
+              fontWeight: 800,
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
             }}
           >
             {isActive && (
@@ -317,12 +300,13 @@ export function MobileTabBar({ active, onNavigate }) {
                   position: 'absolute',
                   inset: 0,
                   borderRadius: 'var(--r-pill)',
-                  background: `color-mix(in srgb, ${m.color} 15%, transparent)`,
+                  background: `color-mix(in srgb, ${m.color} 18%, transparent)`,
+                  pointerEvents: 'none',
                 }}
               />
             )}
-            <span style={{ position: 'relative', display: 'grid', placeItems: 'center', gap: 3 }}>
-              <Icon size={17} strokeWidth={2.4} />
+            <span style={{ position: 'relative', display: 'grid', placeItems: 'center', gap: 2, pointerEvents: 'none' }}>
+              <Icon size={16} strokeWidth={2.4} />
               {m.short}
             </span>
           </button>

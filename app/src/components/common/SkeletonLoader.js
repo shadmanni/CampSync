@@ -1,108 +1,71 @@
-import React, { useEffect, useRef } from "react";
-import { View, StyleSheet, Animated } from "react-native";
-import { colors, radii, spacing } from "../../theme/theme";
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Animated } from 'react-native';
+import { colors, radii, borders } from '../../theme/theme';
 
-export const SkeletonLoader = ({ count = 3 }) => {
-  const opacityAnim = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacityAnim, {
-          toValue: 0.8,
-          duration: 800,
-          useNativeDriver: true
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true
-        })
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [opacityAnim]);
-
+/**
+ * SkeletonLoader — Placeholder shimmer styled with Campus Pop tokens.
+ * Shows a card outline with pulsing bars inside.
+ */
+export function SkeletonCard({ lines = 3, height = 168 }) {
   return (
-    <View style={styles.container}>
-      {Array.from({ length: count }).map((_, idx) => (
-        <Animated.View key={idx} style={[styles.card, { opacity: opacityAnim }]}>
-          <View style={styles.row}>
-            <View style={styles.avatarPlaceholder} />
-            <View style={styles.metaPlaceholder}>
-              <View style={styles.lineShort} />
-              <View style={styles.lineTiny} />
-            </View>
-          </View>
-          <View style={styles.titlePlaceholder} />
-          <View style={styles.bodyPlaceholder} />
-          <View style={[styles.bodyPlaceholder, { width: "70%" }]} />
-          <View style={styles.footerPlaceholder} />
-        </Animated.View>
+    <View style={[styles.card, { minHeight: height }]}>
+      <View style={styles.headerRow}>
+        <View style={[styles.skel, styles.circle]} />
+        <View style={{ flex: 1 }}>
+          <View style={[styles.skel, { width: '38%', height: 11, marginBottom: 7 }]} />
+          <View style={[styles.skel, { width: '22%', height: 9 }]} />
+        </View>
+      </View>
+      {Array.from({ length: lines }, (_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.skel,
+            {
+              height: 11,
+              marginBottom: 9,
+              width: i === lines - 1 ? '62%' : '100%',
+            },
+          ]}
+        />
       ))}
     </View>
   );
-};
+}
+
+export function SkeletonGrid({ count = 4, lines, height }) {
+  return (
+    <View style={styles.grid}>
+      {Array.from({ length: count }, (_, i) => (
+        <SkeletonCard key={i} lines={lines} height={height} />
+      ))}
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: {
-    padding: spacing.containerPadding,
-    gap: spacing.md
-  },
   card: {
-    backgroundColor: colors.bgGlass,
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderGlass
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    ...borders.card,
+    padding: 20,
   },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: spacing.md
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
   },
-  avatarPlaceholder: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.1)"
+  circle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
-  metaPlaceholder: {
-    marginLeft: spacing.sm,
-    gap: 6
+  skel: {
+    backgroundColor: colors.surfaceInset,
+    borderRadius: 6,
   },
-  lineShort: {
-    width: 100,
-    height: 12,
-    borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.1)"
+  grid: {
+    gap: 16,
   },
-  lineTiny: {
-    width: 60,
-    height: 10,
-    borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.06)"
-  },
-  titlePlaceholder: {
-    width: "85%",
-    height: 18,
-    borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
-    marginBottom: spacing.sm
-  },
-  bodyPlaceholder: {
-    width: "100%",
-    height: 12,
-    borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    marginBottom: 6
-  },
-  footerPlaceholder: {
-    width: "40%",
-    height: 24,
-    borderRadius: radii.full,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    marginTop: spacing.sm
-  }
 });

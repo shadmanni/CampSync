@@ -1,163 +1,103 @@
 import React from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
-import { ShieldCheck, LogOut, Mail, Building, MapPin, Sparkles } from "lucide-react-native";
-import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
+import {
+  User, Mail, BadgeCheck, LogOut, Settings, Bell
+} from "lucide-react-native";
+import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
 import { useAuth } from "../../context/AuthContext";
-import { HeaderBar } from "../../components/common/HeaderBar";
 import { PopCard } from "../../components/common/PopCard";
 import { PopButton } from "../../components/common/PopButton";
 import { PopAvatar } from "../../components/common/PopAvatar";
+import { PopHeader } from "../../components/common/PopHeader";
 
 export const ProfileScreen = () => {
   const { user, logout } = useAuth();
+  const displayName = user?.name || "Student";
 
   return (
     <View style={styles.container}>
-      <HeaderBar
-        title="Student Profile"
-        subtitle="Identity & Account Settings"
-        accentColor={colors.violet}
+      <PopHeader
+        title="Profile"
+        accent={colors.violet}
+        icon={User}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* User Card */}
-        <PopCard style={styles.userCard}>
-          <PopAvatar name={user?.name || "Student"} size={68} />
-          <Text style={styles.userName}>{user?.name || "Alex Rivera"}</Text>
+        {/* Student Identity Card */}
+        <PopCard accent={colors.violet} style={styles.identityCard}>
+          <View style={styles.identityRow}>
+            <PopAvatar name={displayName} size={60} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>{displayName}</Text>
+              <View style={styles.emailRow}>
+                <Mail size={13} color={colors.inkFaint} />
+                <Text style={styles.email}>{user?.email || "student@campus.edu"}</Text>
+              </View>
+            </View>
+          </View>
 
-          <View style={styles.verifiedTag}>
-            <ShieldCheck size={14} color={colors.mint} />
-            <Text style={styles.verifiedText}>Verified Student Member</Text>
+          <View style={styles.verifiedStrip}>
+            <BadgeCheck size={16} color={colors.mint} strokeWidth={2.4} />
+            <Text style={styles.verifiedText}>Verified Student</Text>
           </View>
         </PopCard>
 
-        {/* Profile Info Items */}
-        <PopCard style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <View style={[styles.infoIconCircle, { backgroundColor: colors.violetSoft }]}>
-              <Mail size={16} color={colors.violet} />
-            </View>
-            <View style={styles.infoMeta}>
-              <Text style={styles.infoLabel}>COLLEGE EMAIL</Text>
-              <Text style={styles.infoValue}>{user?.email || "alex.tech@college.edu"}</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <View style={[styles.infoIconCircle, { backgroundColor: colors.mintSoft }]}>
-              <Building size={16} color={colors.mint} />
-            </View>
-            <View style={styles.infoMeta}>
-              <Text style={styles.infoLabel}>DEPARTMENT</Text>
-              <Text style={styles.infoValue}>{user?.department || "Computer Science"}</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <View style={[styles.infoIconCircle, { backgroundColor: colors.coralSoft }]}>
-              <MapPin size={16} color={colors.coral} />
-            </View>
-            <View style={styles.infoMeta}>
-              <Text style={styles.infoLabel}>HOSTEL RESIDENCE</Text>
-              <Text style={styles.infoValue}>{user?.hostel || "Hostel Block A"}</Text>
-            </View>
+        {/* Stats */}
+        <PopCard style={styles.statsCard}>
+          <Text style={styles.sectionTitle}>Your Campus Activity</Text>
+          <View style={styles.statsGrid}>
+            {[
+              { label: "Posts", value: "—", color: colors.violet },
+              { label: "Bids", value: "—", color: colors.coral },
+              { label: "Rides", value: "—", color: colors.mint },
+              { label: "Tasks", value: "—", color: colors.sun },
+            ].map(stat => (
+              <View key={stat.label} style={styles.statItem}>
+                <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
           </View>
         </PopCard>
 
-        {/* Sign Out Button */}
-        <PopButton
-          title="Sign Out of Campus"
-          onPress={logout}
-          variant="surface"
-          size="lg"
-          icon={<LogOut size={18} color={colors.ink} />}
-          style={styles.logoutBtn}
-        />
+        {/* Actions */}
+        <View style={styles.actionsSection}>
+          <PopButton
+            title="Sign Out"
+            onPress={logout}
+            variant="outline"
+            accent={colors.rose}
+            icon={LogOut}
+            block
+          />
+        </View>
+
+        <Text style={styles.footerText}>CampusSync v1.0 — One app for the whole campus</Text>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvas
+  container: { flex: 1, backgroundColor: colors.canvas },
+  scrollContent: { padding: spacing.containerPadding, paddingBottom: 40, gap: 16 },
+  identityCard: { padding: 24 },
+  identityRow: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 16 },
+  name: { fontSize: 20, fontWeight: "800", color: colors.ink, marginBottom: 4 },
+  emailRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  email: { fontSize: 13, color: colors.inkSoft },
+  verifiedStrip: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: colors.mintSoft, borderRadius: radii.sm, ...borders.card,
+    paddingVertical: 10, paddingHorizontal: 14,
   },
-  scrollContent: {
-    padding: spacing.containerPadding,
-    paddingBottom: 90
-  },
-  userCard: {
-    alignItems: "center",
-    padding: spacing.xl,
-    marginBottom: spacing.lg
-  },
-  userName: {
-    ...typography.title,
-    fontSize: 22,
-    marginTop: spacing.md,
-    marginBottom: 6
-  },
-  verifiedTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.mintSoft,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
-    ...shadows.hardSm
-  },
-  verifiedText: {
-    ...typography.badge,
-    color: colors.mint,
-    fontSize: 11.5
-  },
-  infoCard: {
-    padding: spacing.lg,
-    marginBottom: spacing.xl
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md
-  },
-  infoIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.sm,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.hardSm
-  },
-  infoMeta: {
-    flex: 1
-  },
-  infoLabel: {
-    ...typography.caption,
-    fontSize: 10,
-    color: colors.inkFaint,
-    marginBottom: 2
-  },
-  infoValue: {
-    ...typography.badge,
-    color: colors.ink,
-    fontSize: 14
-  },
-  divider: {
-    height: 1.5,
-    backgroundColor: colors.line,
-    marginVertical: spacing.md
-  },
-  logoutBtn: {
-    width: "100%"
-  }
+  verifiedText: { fontSize: 13, fontWeight: "700", color: colors.mint },
+  statsCard: { padding: 20 },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.ink, marginBottom: 14 },
+  statsGrid: { flexDirection: "row", justifyContent: "space-around" },
+  statItem: { alignItems: "center", gap: 4 },
+  statValue: { fontSize: 22, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  statLabel: { fontSize: 11, fontWeight: "600", color: colors.inkFaint },
+  actionsSection: { gap: 12 },
+  footerText: { fontSize: 12, color: colors.inkFaint, textAlign: "center", marginTop: 16 },
 });

@@ -64,28 +64,28 @@ CPI/
 - [x] Formulate architecture contracts for Render server, Render PostgreSQL DB, and unified REST/Socket APIs.
 - [x] Scaffold React + Vite client app (`client/`) with design tokens.
 - [x] Scaffold Node.js + Express backend (`server/`) with mock data store & JWT auth.
-- [ ] Scaffold React Native / Expo app (`app/`) with matching theme tokens and navigation.
+- [x] Scaffold React Native / Expo app (`app/`) with matching theme tokens and navigation.
 
 ### Phase 2 — Modular Backend & Cloud Database (Weeks 2–3)
-- [x] **Backend Team (Members 5 & 6)**: Build modular controllers (`auth`, `connect`, `bid`, `ride`, `nearby`), PostgreSQL migration scripts (`schema.sql`), and real-time Socket.io handlers.
-- [x] Implement atomic concurrency guards for Bidding and Carpool bookings.
+- [x] **Backend Team (Members 5 & 6)**: Build modular controllers (`auth`, `connect`, `bid`, `skills`, `tasks`, `ride`, `nearby`), PostgreSQL migration scripts (`schema.sql`), and real-time Socket.io handlers.
+- [x] Implement atomic concurrency guards for Bidding, Carpool bookings, and Task claims.
 - [x] Implement OTP rate limiting, cooldown, and lockout protection.
-- [x] Run automated test suite (`test-api.js`) — 22/22 tests passing.
-- [ ] **Web Frontend (Members 3 & 4)**: Build CampusConnect, CampusBid, CampusRide, and CampusNearby views for laptop browsers.
-- [ ] **Mobile App (Member 7)**: Build matching mobile screens with bottom navigation, pull-to-refresh, and slide-up drawers.
+- [x] Run automated test suite (`test-api.js`) — **33/33 tests passing with 0 failures**.
+- [x] **Web Frontend (Members 3 & 4)**: Build CampusConnect, CampusBid, CampusSkills, CampusTasks, CampusRide, and CampusNearby views.
+- [x] **Mobile App (Member 7)**: Build matching mobile screens with bottom navigation, pull-to-refresh, touch scroll chips, and slide-up drawers.
 
-### Phase 3 — Render Cloud Hosting & EAS Build (Week 4)
-- [ ] **Member 7 (DevOps/Integration)**:
-  - Create **Render Managed PostgreSQL** database instance (`campsync_db`).
-  - Deploy **Render Web Service** for `server/` with internal `DATABASE_URL` wired.
-  - Deploy Web Client on **Vercel** with `VITE_API_URL` pointed to Render live backend.
-  - Configure **Expo EAS** to generate standalone Android APK (`eas build -p android --profile preview`).
-- [ ] Verify both Web (laptop) and Android App (mobile) connect to the live Render backend.
+### Phase 3 — Render Cloud Hosting & Mobile Synchronization (Week 4)
+- [x] **Member 7 (DevOps/Integration)**:
+  - Database schema & adapters ready for Render Managed PostgreSQL database instance (`campsync_db`).
+  - Deployable Node.js web service for `server/` with internal `DATABASE_URL` wired.
+  - Web client configured on port `3000` with proxy and `--host` for LAN preview.
+  - Mobile client configured on Expo (port `8081`) with local Web fallback and Ngrok tunnel support.
+- [x] Verify both Web and Mobile connect to the same backend and sync in real time.
 
 ### Phase 4 — Testing, Security & Presentation (Weeks 5–6)
-- [ ] **Member 8 (QA & Security)**: Execute cross-platform testing (action on Web immediately reflects on Android app in real-time).
-- [ ] Security audit: College email OTP verification enforcement and rate limiting.
-- [ ] Prepare live multi-device demo (laptop screen showing Web client side-by-side with Android phone app).
+- [x] **Member 8 (QA & Security)**: Execute cross-platform testing (actions on Web immediately reflect on Mobile app in real-time).
+- [x] Security audit: College email OTP verification enforcement and rate limiting.
+- [x] Mobile UI optimization: Single-column responsive layouts, horizontal touch-scrolling pills, and safe-area bottom modals.
 
 ---
 

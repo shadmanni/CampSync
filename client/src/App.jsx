@@ -150,7 +150,7 @@ function Shell() {
 
       <main id="main-content" style={{ minHeight: '80vh' }}>
         {entered ? (
-          <div className="shell" style={{ paddingTop: 'var(--space-md)', paddingBottom: 'var(--space-xl)' }}>
+          <div className="shell" style={{ paddingTop: 'clamp(32px, 4.5vw, 48px)', paddingBottom: 'var(--space-xl)' }}>
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={tab}
@@ -203,24 +203,24 @@ function Footer({ onNavigate, onHome }) {
   return (
     <footer
       style={{
-        borderTop: '1px solid var(--line)',
-        background: 'var(--surface-muted)',
-        padding: 'var(--space-lg) 0 calc(var(--space-lg) + 50px)',
-        marginTop: 'var(--space-xl)',
-        fontSize: '0.82rem',
-        color: 'var(--text-subtle)',
+        marginTop: 60,
+        borderTop: '1.5px solid var(--line)',
+        paddingTop: 36,
+        paddingBottom: 40,
+        fontSize: '0.84rem',
+        color: 'var(--ink-soft)',
       }}
     >
-      <div className="shell col" style={{ gap: 'var(--space-md)' }}>
-        <div className="row-between" style={{ flexWrap: 'wrap', gap: 'var(--gap)' }}>
-          <div className="col" style={{ gap: 4 }}>
+      <div className="shell stack" style={{ gap: 24 }}>
+        <div className="row-between wrap" style={{ gap: 'var(--gap)' }}>
+          <div className="stack" style={{ gap: 4 }}>
             <button
               type="button"
               onClick={onHome}
               style={{
                 fontFamily: 'var(--font-display)',
                 fontWeight: 800,
-                fontSize: '1rem',
+                fontSize: '1.1rem',
                 color: 'var(--ink)',
                 background: 'none',
                 border: 0,
@@ -231,17 +231,19 @@ function Footer({ onNavigate, onHome }) {
             >
               CampusSync
             </button>
-            <span>One unified application for everything that happens on campus.</span>
+            <span style={{ color: 'var(--ink-faint)', fontSize: '0.85rem' }}>
+              One unified application for everything that happens on campus.
+            </span>
           </div>
 
-          <nav aria-label="Footer modules" className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <nav aria-label="Footer modules" className="row wrap" style={{ gap: 8 }}>
             {MODULES.map((m) => (
               <button
                 key={m.id}
                 type="button"
-                className="pill"
+                className="chip"
                 onClick={() => onNavigate(m.id)}
-                style={{ fontSize: '0.74rem' }}
+                style={{ fontSize: '0.8rem', padding: '6px 14px' }}
               >
                 {m.short}
               </button>
@@ -249,7 +251,7 @@ function Footer({ onNavigate, onHome }) {
           </nav>
         </div>
 
-        <div className="row-between" style={{ borderTop: '1px solid var(--line)', paddingTop: 16, fontSize: '0.75rem' }}>
+        <div className="row-between wrap" style={{ borderTop: '1.5px solid var(--line)', paddingTop: 16, fontSize: '0.78rem', color: 'var(--ink-faint)' }}>
           <span>CPI Team of 8 • React (Vite) + React Native (Expo) + Node.js + Render PostgreSQL</span>
           <span>© 2026 CampusSync</span>
         </div>

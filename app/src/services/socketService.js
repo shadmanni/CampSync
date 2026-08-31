@@ -9,12 +9,11 @@ class SocketService {
   }
 
   getSocketUrl() {
+    if (Platform.OS === 'web') {
+      return 'http://localhost:5000';
+    }
     if (process.env.EXPO_PUBLIC_SOCKET_URL) {
       return process.env.EXPO_PUBLIC_SOCKET_URL;
-    }
-    if (Platform.OS === "web" && typeof window !== "undefined" && window.location) {
-      const host = window.location.hostname || "localhost";
-      return `http://${host}:5000`;
     }
     if (Platform.OS === "android") {
       return "http://10.0.2.2:5000";

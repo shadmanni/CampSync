@@ -278,7 +278,7 @@ function HeroModuleCard({ module, onClick }) {
   const Icon = module.icon;
   return (
     <TiltCard
-      className={`card-pop is-interactive card-topline ${module.accent}`}
+      className={`card-pop is-interactive ${module.accent}`}
       style={{ padding: 22, cursor: 'pointer', height: '100%' }}
       onClick={onClick}
       max={7}

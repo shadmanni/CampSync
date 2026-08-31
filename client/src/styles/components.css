@@ -52,15 +52,6 @@
   border-radius: var(--r-md);
 }
 
-/* Coloured hairline along the top of a module card — cheap identity cue. */
-.card-topline::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
-  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 25%, transparent));
-}
 
 /* ---- Buttons ------------------------------------------------------------- */
 .btn {
@@ -120,30 +111,146 @@
 }
 .btn-soft:not(:disabled):hover { transform: translateY(-2px); }
 
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 2px solid var(--line-strong);
+  box-shadow: var(--shadow-hard-sm);
+}
+.btn-secondary:not(:disabled):hover {
+  background: var(--surface);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard);
+}
+.btn-secondary:not(:disabled):active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
 .btn-sm { padding: 7px 13px; font-size: var(--t-micro); gap: 6px; }
 .btn-lg { padding: 15px 28px; font-size: 1rem; }
 .btn-icon { padding: 9px; border-radius: var(--r-pill); aspect-ratio: 1; }
 .btn-block { width: 100%; }
 
-/* ---- Pills / chips / badges ---------------------------------------------- */
+/* ---- Panel Toolbar Container --------------------------------------------- */
+.panel {
+  background: var(--surface);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-hard);
+  padding: 18px 20px;
+}
+
+/* ---- Segmented Filter Control -------------------------------------------- */
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: var(--r-pill);
+  border: 2px solid var(--line-strong);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-hard-sm);
+}
+
+.segmented-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 15px;
+  border-radius: var(--r-pill);
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: var(--t-small);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.segmented-item:hover:not(.active) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.segmented-item.active {
+  background: var(--ink);
+  color: var(--ink-invert);
+  box-shadow: var(--shadow-hard-sm);
+}
+
+/* ---- Pills / Chips / Badges ---------------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  border: 2px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--t-small);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  box-shadow: var(--shadow-hard-sm);
+  transition: all var(--dur-fast) var(--ease-spring);
+}
+
+.pill:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard);
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.pill:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+.pill.pill-active,
+.pill-active {
+  background: var(--accent) !important;
+  color: var(--on-accent) !important;
+  border-color: var(--line-strong) !important;
+  box-shadow: var(--shadow-hard) !important;
+  transform: translate(-1.5px, -1.5px);
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
+  padding: 8px 16px;
   border-radius: var(--r-pill);
-  border: var(--line-width) solid var(--line);
+  border: 2px solid var(--line-strong);
   background: var(--surface);
-  color: var(--ink-soft);
+  color: var(--ink);
   font-size: var(--t-small);
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: color var(--dur-fast) var(--ease-out),
-              border-color var(--dur-fast) var(--ease-out);
+  box-shadow: var(--shadow-hard-sm);
+  transition: all var(--dur-fast) var(--ease-spring);
 }
-.chip:hover { border-color: var(--line-strong); color: var(--ink); }
-.chip[data-active="true"] { color: var(--ink-invert); border-color: transparent; }
+.chip:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard);
+}
+.chip[data-active="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-hard);
+}
 
 .badge {
   display: inline-flex;
@@ -155,13 +262,26 @@
   font-weight: 700;
   background: var(--accent-soft);
   color: var(--accent);
+  border: 1.5px solid currentColor;
   white-space: nowrap;
+}
+
+.badge-secondary {
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  border: 1.5px solid var(--line);
 }
 
 .badge-outline {
   background: transparent;
   border: var(--line-width) solid var(--line);
   color: var(--ink-soft);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+  gap: var(--gap-lg);
 }
 
 /* Live status dot with a breathing halo */
@@ -332,10 +452,75 @@ select.input {
   z-index: 80;
 }
 
+/* ---- Horizontal Scroll Row (Mobile Filters & Tabs) ----------------------- */
+.scroll-x {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 2px 2px 6px 2px;
+  max-width: 100%;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
 /* ---- Responsive ---------------------------------------------------------- */
 @media (max-width: 860px) {
-  :root { --nav-h: 62px; }
+  :root {
+    --nav-h: 62px;
+    --gap: 12px;
+    --gap-lg: 16px;
+  }
   .hide-sm { display: none !important; }
+  .show-sm { display: flex !important; }
+
+  /* Ensure card grids collapse cleanly to 1 column on mobile */
+  .grid-cards, .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .panel {
+    padding: 14px 16px !important;
+  }
+
+  .card, .card-pop {
+    padding: 16px !important;
+  }
+
+  /* Full width action buttons inside SectionHead on mobile */
+  .section-head-action {
+    width: 100%;
+    margin-top: 6px;
+  }
+  .section-head-action > * {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .shell {
+    padding-inline: 14px !important;
+  }
+  .btn-lg {
+    padding: 12px 20px !important;
+    font-size: 0.92rem !important;
+  }
+  .t-title {
+    font-size: 1.45rem !important;
+    line-height: 1.25 !important;
+  }
+  .segmented-item {
+    padding: 6px 12px !important;
+    font-size: 0.8rem !important;
+  }
 }
 
 @media (min-width: 861px) {

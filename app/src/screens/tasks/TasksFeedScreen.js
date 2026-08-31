@@ -1,481 +1,310 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  RefreshControl,
-  Alert
+  View, Text, FlatList, StyleSheet, TouchableOpacity,
+  TextInput, Modal, ScrollView, RefreshControl
 } from "react-native";
 import {
-  CheckSquare,
-  Search,
-  Plus,
-  Clock,
-  MapPin,
-  Coins,
-  CheckCircle2,
-  AlertCircle
+  CheckSquare, Plus, MapPin, Clock, Zap, X, Award
 } from "lucide-react-native";
-import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
+import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
 import { tasksService } from "../../services/tasksService";
 import { socketService } from "../../services/socketService";
-import { HeaderBar } from "../../components/common/HeaderBar";
+import { useAuth } from "../../context/AuthContext";
 import { PopCard } from "../../components/common/PopCard";
-import { PopPill } from "../../components/common/PopPill";
 import { PopButton } from "../../components/common/PopButton";
-import { PopAvatar } from "../../components/common/PopAvatar";
-import { SkeletonLoader } from "../../components/common/SkeletonLoader";
+import { PopPill } from "../../components/common/PopPill";
+import { PopHeader } from "../../components/common/PopHeader";
 import { EmptyState } from "../../components/common/EmptyState";
-import { ErrorState } from "../../components/common/ErrorState";
-import { CreateTaskModal } from "./CreateTaskModal";
+import { SkeletonCard } from "../../components/common/SkeletonLoader";
 
-const TASK_CATEGORIES = [
-  "All",
-  "Printout & Stationary",
-  "Luggage & Moving",
-  "Courier & Parcel",
-  "Food Delivery",
-  "Academic Help",
-  "Errands"
-];
+const ACCENT = colors.sun;
+const CATEGORIES = ["All", "Printout & Stationary", "Luggage & Moving", "Courier & Parcel", "Food Delivery", "Academic Help", "Errands"];
+const STATUSES = ["All", "OPEN", "ASSIGNED", "COMPLETED"];
 
 export const TasksFeedScreen = () => {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [statusFilter, setStatusFilter] = useState("ALL"); // 'ALL' | 'OPEN' | 'ASSIGNED' | 'COMPLETED'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [category, setCategory] = useState("All");
+  const [status, setStatus] = useState("All");
+  const [createOpen, setCreateOpen] = useState(false);
 
-  const fetchTasks = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    setError(null);
+  const load = useCallback(async () => {
     try {
-      const data = await tasksService.getTasks(statusFilter, selectedCategory);
-      setTasks(data || []);
+      const data = await tasksService.getTasks(status, category);
+      setTasks(data?.tasks || data || []);
     } catch (err) {
-      setError(err.message || "Failed to load campus tasks.");
+      console.warn("[TasksFeed] Load error:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [statusFilter, selectedCategory]);
+  }, [category, status]);
 
+  useEffect(() => { load(); }, [load]);
+  const onRefresh = () => { setRefreshing(true); load(); };
+
+  // Real-time: listen for task events from other clients
   useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
-
-  // Real-time task events
-  useEffect(() => {
-    const handleTaskClaimed = (update) => {
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === update.taskId
-            ? { ...t, status: "ASSIGNED", claimedBy: update.claimedBy }
-            : t
-        )
-      );
+    socketService.connect();
+    const onCreated = (task) => {
+      setTasks(prev => {
+        if (prev.some(t => t.id === task.id)) return prev;
+        return [task, ...prev];
+      });
     };
-
-    const handleTaskCompleted = (update) => {
-      setTasks((prev) =>
-        prev.map((t) => (t.id === update.taskId ? { ...t, status: "COMPLETED" } : t))
-      );
+    const onAssigned = ({ taskId, status, assignedToName }) => {
+      setTasks(prev => prev.map(t => (t.id || t._id) === taskId ? { ...t, status, assignedToName } : t));
     };
-
-    socketService.on("task:claimed", handleTaskClaimed);
-    socketService.on("task:completed", handleTaskCompleted);
+    const onCompleted = ({ taskId, status }) => {
+      setTasks(prev => prev.map(t => (t.id || t._id) === taskId ? { ...t, status } : t));
+    };
+    socketService.on("task:created", onCreated);
+    socketService.on("task:assigned", onAssigned);
+    socketService.on("task:completed", onCompleted);
     return () => {
-      socketService.off("task:claimed", handleTaskClaimed);
-      socketService.off("task:completed", handleTaskCompleted);
+      socketService.off("task:created", onCreated);
+      socketService.off("task:assigned", onAssigned);
+      socketService.off("task:completed", onCompleted);
     };
   }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchTasks(true);
-  };
-
-  const handleClaim = async (task) => {
-    if (task.status !== "OPEN") {
-      Alert.alert("Task Unavailable", "This gig has already been claimed by another student.");
-      return;
-    }
-
+  const handleAccept = async (task) => {
+    const id = task._id || task.id;
     try {
-      await tasksService.claimTask(task.id);
-      setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: "ASSIGNED" } : t))
-      );
-      Alert.alert("Gig Claimed!", `You've accepted this task for ₹${task.reward}. Complete it and earn your bounty!`);
+      const res = await tasksService.acceptTask(id);
+      setTasks(prev => prev.map(t => (t._id || t.id) === id ? { ...t, status: "ASSIGNED", ...(res?.task || res) } : t));
     } catch (err) {
-      Alert.alert("Claim Failed", err.message || "Task already claimed.");
+      console.warn("[TasksFeed] Accept error:", err);
     }
   };
 
-  const renderTaskCard = ({ item }) => {
-    const isOpen = item.status === "OPEN";
-    const isAssigned = item.status === "ASSIGNED";
-    const isCompleted = item.status === "COMPLETED";
-
-    return (
-      <PopCard style={styles.card}>
-        <View style={styles.cardTop}>
-          <View
-            style={[
-              styles.statusTag,
-              isOpen && styles.statusOpen,
-              isAssigned && styles.statusAssigned,
-              isCompleted && styles.statusCompleted
-            ]}
-          >
-            <Text
-              style={[
-                styles.statusText,
-                isOpen && styles.statusTextOpen,
-                isAssigned && styles.statusTextAssigned,
-                isCompleted && styles.statusTextCompleted
-              ]}
-            >
-              {isOpen ? "🟢 OPEN GIG" : isAssigned ? "🟡 IN PROGRESS" : "✅ COMPLETED"}
-            </Text>
-          </View>
-
-          <View style={styles.rewardBadge}>
-            <Coins size={14} color={colors.ink} />
-            <Text style={styles.rewardText}>₹{item.reward}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.taskTitle}>{item.title}</Text>
-        <Text style={styles.description} numberOfLines={2}>
-          {item.description}
-        </Text>
-
-        {/* Location & Time Box */}
-        <PopCard style={styles.locationBox} variant="inset">
-          <View style={styles.locRow}>
-            <MapPin size={13} color={colors.ink} />
-            <Text style={styles.locText} numberOfLines={1}>
-              {item.location || "Campus Premises"}
-            </Text>
-          </View>
-          <View style={styles.timeRow}>
-            <Clock size={13} color={colors.inkFaint} />
-            <Text style={styles.timeText}>{item.timeEstimate || "20 mins"}</Text>
-          </View>
-        </PopCard>
-
-        <View style={styles.cardFooter}>
-          <View style={styles.authorRow}>
-            <PopAvatar name={item.authorName || "Student"} size={26} />
-            <Text style={styles.authorName} numberOfLines={1}>
-              {item.authorName || "Student"}
-            </Text>
-          </View>
-
-          {isOpen ? (
-            <PopButton
-              title="Claim Gig"
-              onPress={() => handleClaim(item)}
-              variant="sun"
-              size="sm"
-            />
-          ) : isAssigned ? (
-            <PopButton
-              title="In Progress"
-              disabled
-              variant="surface"
-              size="sm"
-            />
-          ) : (
-            <PopButton
-              title="Completed ✓"
-              disabled
-              variant="surface"
-              size="sm"
-            />
-          )}
-        </View>
-      </PopCard>
-    );
+  const handleCreate = async (formData) => {
+    try {
+      const created = await tasksService.createTask(formData);
+      setTasks(prev => [created, ...prev]);
+      setCreateOpen(false);
+    } catch (err) {
+      console.warn("[TasksFeed] Create error:", err);
+    }
   };
+
+  const renderTask = ({ item }) => (
+    <PopCard accent={ACCENT} style={styles.taskCard}>
+      <View style={styles.topRow}>
+        {item.category && (
+          <View style={[styles.badge, { backgroundColor: colors.sunSoft }]}>
+            <Text style={[styles.badgeText, { color: ACCENT }]}>{item.category}</Text>
+          </View>
+        )}
+        <View style={[styles.statusBadge, {
+          backgroundColor: item.status === "OPEN" ? colors.mintSoft
+            : item.status === "ASSIGNED" ? colors.skySoft
+            : colors.surfaceInset,
+        }]}>
+          <Text style={[styles.statusText, {
+            color: item.status === "OPEN" ? colors.mint
+              : item.status === "ASSIGNED" ? colors.sky
+              : colors.inkFaint,
+          }]}>{item.status || "OPEN"}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.taskTitle} numberOfLines={2}>{item.title}</Text>
+      <Text style={styles.taskDesc} numberOfLines={3}>{item.description}</Text>
+
+      {/* Meta info */}
+      <View style={styles.metaRow}>
+        {(item.pickupLocation || item.dropLocation) && (
+          <View style={styles.metaItem}>
+            <MapPin size={12} color={colors.inkFaint} strokeWidth={2.4} />
+            <Text style={styles.metaText}>{item.pickupLocation}{item.dropLocation ? ` → ${item.dropLocation}` : ''}</Text>
+          </View>
+        )}
+        {item.deadline && (
+          <View style={styles.metaItem}>
+            <Clock size={12} color={colors.inkFaint} strokeWidth={2.4} />
+            <Text style={styles.metaText}>{item.deadline}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Reward + CTA */}
+      <View style={styles.rewardRow}>
+        <View style={styles.rewardBlock}>
+          <Award size={16} color={ACCENT} strokeWidth={2.2} />
+          <Text style={styles.rewardAmount}>₹{item.reward}</Text>
+          <Text style={styles.rewardLabel}>bounty</Text>
+        </View>
+
+        <PopButton
+          title={item.status === "OPEN" ? "Accept Gig" : item.status === "ASSIGNED" ? "In Progress" : "Done"}
+          accent={ACCENT}
+          icon={item.status === "OPEN" ? Zap : CheckSquare}
+          variant={item.status === "OPEN" ? "primary" : "ghost"}
+          size="sm"
+          onPress={() => handleAccept(item)}
+          disabled={item.status !== "OPEN"}
+        />
+      </View>
+    </PopCard>
+  );
 
   return (
     <View style={styles.container}>
-      <HeaderBar
+      <PopHeader
         title="CampusTasks"
-        subtitle="Quick Peer Gigs & Campus Micro-Bounties"
-        accentColor={colors.sun}
-        onNotificationPress={() => {}}
+        subtitle={`${tasks.filter(t => t.status === "OPEN" || !t.status).length} open gig${tasks.filter(t => t.status === "OPEN" || !t.status).length !== 1 ? "s" : ""}`}
+        accent={ACCENT}
+        icon={CheckSquare}
       />
 
-      {/* Status Filter Tabs */}
-      <View style={styles.statusRow}>
-        {[
-          { id: "ALL", label: "All Gigs" },
-          { id: "OPEN", label: "🟢 Open" },
-          { id: "ASSIGNED", label: "🟡 Active" },
-          { id: "COMPLETED", label: "✅ Done" }
-        ].map((s) => (
-          <TouchableOpacity
-            key={s.id}
-            style={[styles.statusChip, statusFilter === s.id && styles.statusChipActive]}
-            onPress={() => setStatusFilter(s.id)}
-          >
-            <Text style={[styles.statusChipText, statusFilter === s.id && styles.statusChipTextActive]}>
-              {s.label}
-            </Text>
-          </TouchableOpacity>
+      {/* Status Pills */}
+      <View style={styles.toggleRow}>
+        {STATUSES.map(s => (
+          <PopPill key={s} label={s} active={status === s} onPress={() => setStatus(s)} accent={ACCENT} />
         ))}
       </View>
 
-      {/* Categories */}
-      <View style={styles.categoryRow}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={TASK_CATEGORIES}
-          keyExtractor={(item) => item}
-          renderItem={({ item }) => (
-            <PopPill
-              label={item}
-              active={selectedCategory === item}
-              accentColor={colors.sun}
-              accentSoftColor={colors.sunSoft}
-              onPress={() => setSelectedCategory(item)}
-            />
-          )}
-          contentContainerStyle={styles.categoryList}
-        />
-      </View>
+      {/* Category Pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsRow}>
+        {CATEGORIES.map(cat => (
+          <PopPill key={cat} label={cat} active={category === cat} onPress={() => setCategory(cat)} accent={ACCENT} />
+        ))}
+      </ScrollView>
 
-      {/* Tasks List */}
-      {loading && !refreshing ? (
-        <SkeletonLoader count={3} />
-      ) : error ? (
-        <ErrorState
-          title="Could not load gigs"
-          message={error}
-          onRetry={() => fetchTasks()}
-        />
+      {loading ? (
+        <View style={{ padding: spacing.containerPadding, gap: 16 }}>
+          <SkeletonCard /><SkeletonCard />
+        </View>
       ) : (
         <FlatList
           data={tasks}
-          keyExtractor={(item) => item.id}
-          renderItem={renderTaskCard}
+          keyExtractor={item => item._id || item.id}
+          renderItem={renderTask}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.sun}
-              colors={[colors.sun]}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
           ListEmptyComponent={
-            <EmptyState
-              icon={<CheckSquare size={32} color={colors.sun} />}
-              title="No tasks found"
-              description="Post a printout pickup, parcel errand, or moving gig!"
-              actionTitle="Post a Gig"
-              onAction={() => setCreateModalVisible(true)}
-              accentVariant="sun"
-            />
+            <EmptyState icon={CheckSquare} title="No tasks posted yet" hint="Post a campus errand and set a bounty — someone will grab it." />
           }
         />
       )}
 
-      {/* Floating Plus */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        onPress={() => setCreateModalVisible(true)}
-      >
-        <Plus size={24} color={colors.ink} />
+      <TouchableOpacity style={styles.fab} onPress={() => setCreateOpen(true)} activeOpacity={0.85}>
+        <Plus size={24} color={colors.ink} strokeWidth={2.8} />
       </TouchableOpacity>
 
-      <CreateTaskModal
-        visible={createModalVisible}
-        onClose={() => setCreateModalVisible(false)}
-        onCreated={(newTask) => {
-          setTasks((prev) => [newTask, ...prev]);
-        }}
-      />
+      <CreateTaskModal visible={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} />
     </View>
   );
 };
 
+function CreateTaskModal({ visible, onClose, onSubmit }) {
+  const [form, setForm] = useState({ title: "", description: "", category: "Errands", reward: "", pickupLocation: "", dropLocation: "", deadline: "" });
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (visible) setForm({ title: "", description: "", category: "Errands", reward: "", pickupLocation: "", dropLocation: "", deadline: "" });
+  }, [visible]);
+
+  const submit = async () => {
+    if (busy || !form.title.trim() || !form.reward) return;
+    setBusy(true);
+    await onSubmit({ ...form, reward: Number(form.reward) });
+    setBusy(false);
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Post a Task</Text>
+            <TouchableOpacity onPress={onClose}><X size={22} color={colors.ink} /></TouchableOpacity>
+          </View>
+          <ScrollView keyboardShouldPersistTaps="handled">
+            <Text style={[typography.label, { marginBottom: 8 }]}>What needs doing?</Text>
+            <TextInput style={styles.modalInput} placeholder="e.g. Pick up my library books" placeholderTextColor={colors.inkFaint} value={form.title} onChangeText={t => setForm(f => ({ ...f, title: t }))} />
+
+            <Text style={[typography.label, { marginBottom: 8 }]}>Details</Text>
+            <TextInput style={[styles.modalInput, { height: 80, textAlignVertical: "top" }]} multiline placeholder="Explain the task clearly" placeholderTextColor={colors.inkFaint} value={form.description} onChangeText={t => setForm(f => ({ ...f, description: t }))} />
+
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.label, { marginBottom: 8 }]}>Bounty (₹)</Text>
+                <TextInput style={styles.modalInput} keyboardType="number-pad" placeholder="100" placeholderTextColor={colors.inkFaint} value={form.reward} onChangeText={t => setForm(f => ({ ...f, reward: t }))} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.label, { marginBottom: 8 }]}>Pickup from</Text>
+                <TextInput style={styles.modalInput} placeholder="Central Library" placeholderTextColor={colors.inkFaint} value={form.pickupLocation} onChangeText={t => setForm(f => ({ ...f, pickupLocation: t }))} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.label, { marginBottom: 8 }]}>Drop at</Text>
+                <TextInput style={styles.modalInput} placeholder="Block A Desk" placeholderTextColor={colors.inkFaint} value={form.dropLocation} onChangeText={t => setForm(f => ({ ...f, dropLocation: t }))} />
+              </View>
+            </View>
+
+            <Text style={[typography.label, { marginBottom: 8 }]}>Deadline</Text>
+            <TextInput style={styles.modalInput} placeholder="Today by 5 PM" placeholderTextColor={colors.inkFaint} value={form.deadline} onChangeText={t => setForm(f => ({ ...f, deadline: t }))} />
+
+            <Text style={[typography.label, { marginBottom: 8 }]}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+              <View style={{ flexDirection: "row", gap: 6 }}>
+                {CATEGORIES.filter(c => c !== "All").map(c => (
+                  <PopPill key={c} label={c} active={form.category === c} onPress={() => setForm(f => ({ ...f, category: c }))} accent={ACCENT} />
+                ))}
+              </View>
+            </ScrollView>
+          </ScrollView>
+          <View style={styles.modalActions}>
+            <PopButton title="Cancel" variant="ghost" onPress={onClose} />
+            <PopButton title={busy ? "Posting…" : "Post the Task"} accent={ACCENT} icon={Zap} onPress={submit} loading={busy} disabled={!form.title.trim() || !form.reward} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvas
-  },
-  statusRow: {
-    flexDirection: "row",
-    paddingHorizontal: spacing.containerPadding,
-    gap: spacing.xs,
-    marginTop: spacing.md
-  },
-  statusChip: {
-    flex: 1,
-    backgroundColor: colors.surface2,
-    borderWidth: 1.5,
-    borderColor: colors.line,
-    paddingVertical: 7,
-    borderRadius: radii.md,
-    alignItems: "center"
-  },
-  statusChipActive: {
-    backgroundColor: colors.sun,
-    borderColor: colors.borderInk,
-    ...shadows.hardSm
-  },
-  statusChipText: {
-    ...typography.badge,
-    fontSize: 11,
-    color: colors.inkSoft
-  },
-  statusChipTextActive: {
-    color: colors.ink
-  },
-  categoryRow: {
-    paddingVertical: spacing.sm
-  },
-  categoryList: {
-    paddingHorizontal: spacing.containerPadding
-  },
-  listContent: {
-    paddingHorizontal: spacing.containerPadding,
-    paddingBottom: 90
-  },
-  card: {
-    marginBottom: spacing.md
-  },
-  cardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.sm
-  },
-  statusTag: {
-    borderWidth: 1,
-    borderColor: colors.borderInk,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radii.pill
-  },
-  statusOpen: {
-    backgroundColor: colors.mintSoft
-  },
-  statusAssigned: {
-    backgroundColor: colors.sunSoft
-  },
-  statusCompleted: {
-    backgroundColor: colors.surfaceInset
-  },
-  statusText: {
-    ...typography.badge,
-    fontSize: 10.5
-  },
-  statusTextOpen: {
-    color: colors.mint
-  },
-  statusTextAssigned: {
-    color: colors.ink
-  },
-  statusTextCompleted: {
-    color: colors.inkFaint
-  },
-  rewardBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.sunSoft,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radii.pill,
-    ...shadows.hardSm
-  },
-  rewardText: {
-    ...typography.badge,
-    color: colors.ink,
-    fontSize: 13
-  },
-  taskTitle: {
-    ...typography.heading,
-    fontSize: 16.5,
-    marginBottom: 4
-  },
-  description: {
-    ...typography.body,
-    marginBottom: spacing.sm
-  },
-  locationBox: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.sm,
-    marginBottom: spacing.md
-  },
-  locRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    flex: 1,
-    marginRight: spacing.sm
-  },
-  locText: {
-    ...typography.bodySm,
-    color: colors.ink,
-    fontWeight: "600",
-    fontSize: 11.5
-  },
-  timeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4
-  },
-  timeText: {
-    ...typography.bodySm,
-    fontSize: 11
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderTopWidth: 1.5,
-    borderTopColor: colors.line,
-    paddingTop: spacing.sm
-  },
-  authorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    maxWidth: 160
-  },
-  authorName: {
-    ...typography.bodySm,
-    color: colors.ink,
-    fontWeight: "700"
-  },
+  container: { flex: 1, backgroundColor: colors.canvas },
+  toggleRow: { flexDirection: "row", paddingHorizontal: spacing.containerPadding, paddingTop: 12, gap: 8, flexWrap: "wrap" },
+  pillsRow: { paddingHorizontal: spacing.containerPadding, paddingVertical: 10, gap: 8 },
+  listContent: { paddingHorizontal: spacing.containerPadding, paddingBottom: 100, gap: 14 },
+  taskCard: { padding: 18 },
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill, ...borders.card },
+  badgeText: { fontSize: 11, fontWeight: "700" },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill, ...borders.card },
+  statusText: { fontSize: 11, fontWeight: "700" },
+  taskTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, marginBottom: 6, lineHeight: 22 },
+  taskDesc: { fontSize: 14, color: colors.inkSoft, lineHeight: 20, marginBottom: 12 },
+  metaRow: { flexDirection: "row", gap: 16, marginBottom: 14, flexWrap: "wrap" },
+  metaItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  metaText: { fontSize: 11, color: colors.inkFaint },
+  rewardRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  rewardBlock: { flexDirection: "row", alignItems: "center", gap: 6 },
+  rewardAmount: { fontSize: 20, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
+  rewardLabel: { fontSize: 11, color: colors.inkFaint },
   fab: {
-    position: "absolute",
-    bottom: 22,
-    right: 18,
-    width: 56,
-    height: 56,
-    borderRadius: radii.md,
-    backgroundColor: colors.sun,
-    borderWidth: 2,
-    borderColor: colors.borderInk,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.hard
-  }
+    position: "absolute", bottom: 24, right: 20,
+    width: 56, height: 56, borderRadius: 16,
+    backgroundColor: ACCENT, ...borders.card, ...shadows.hard,
+    alignItems: "center", justifyContent: "center",
+  },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(23,21,15,0.5)", justifyContent: "flex-end" },
+  modalContent: {
+    backgroundColor: colors.surface, borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl,
+    ...borders.card, borderBottomWidth: 0,
+    paddingHorizontal: spacing.containerPadding, paddingTop: 20, paddingBottom: 32,
+    maxHeight: "85%",
+  },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: "800", color: colors.ink },
+  modalInput: {
+    backgroundColor: colors.surfaceInset, borderRadius: radii.sm, ...borders.card,
+    padding: 14, fontSize: 15, color: colors.ink, marginBottom: 14,
+  },
+  modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 12 },
 });

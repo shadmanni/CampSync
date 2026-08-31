@@ -15,7 +15,7 @@ import {
   Package,
 } from 'lucide-react';
 import { Modal } from '../../components/Modal.jsx';
-import { Avatar, EmptyState, MagneticButton, SectionHead, SkeletonCard } from '../../components/ui.jsx';
+import { Avatar, EmptyState, MagneticButton, SectionHead, SkeletonGrid } from '../../components/ui.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
@@ -68,14 +68,14 @@ export function CampusTasks() {
 
   // Real-time socket events
   const onRemoteTaskCreated = useCallback(
-    (newTask) => {
+    (task) => {
       setTasks((prev) => {
-        if (prev.some((t) => t.id === newTask.id)) return prev;
-        if (category !== 'All' && newTask.category !== category) return prev;
-        if (statusFilter !== 'ALL' && statusFilter !== 'OPEN') return prev;
-        return [newTask, ...prev];
+        if (prev.some((t) => t.id === task.id)) return prev;
+        if (category !== 'All' && task.category !== category) return prev;
+        if (statusFilter !== 'ALL' && task.status !== statusFilter) return prev;
+        return [task, ...prev];
       });
-      toast.live('New campus gig posted', { detail: `${newTask.title} (₹${newTask.reward})` });
+      toast.live('New errand posted', { detail: `${task.title} (₹${task.reward})` });
     },
     [category, statusFilter, toast],
   );
@@ -154,26 +154,25 @@ export function CampusTasks() {
   };
 
   return (
-    <div className="module-wrap">
+    <div className="accent-emerald stack-lg">
       <SectionHead
-        eyebrow="CampusTasks — Micro-Tasks & Campus Gigs"
-        title="Get quick errands done or earn pocket money between classes."
-        description="Post small paid gigs like library printouts, luggage shifts, or gate package pickups with upfront cash rewards and atomic runner assignment."
+        title="Get quick errands done or earn pocket money between classes"
+        subtitle="Post small paid gigs like library printouts, luggage shifts, or gate package pickups with upfront cash rewards and atomic runner assignment."
         action={
           <MagneticButton
             onClick={() => (user ? setCreateOpen(true) : openAuth())}
             className="btn btn-primary"
           >
-            <Plus size={16} />
+            <Plus size={16} strokeWidth={2.8} />
             <span>Post an Errand</span>
           </MagneticButton>
         }
       />
 
       {/* Filter Toolbar */}
-      <div className="panel" style={{ padding: '14px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
-          {/* Status Filter Segmented */}
+      <div className="panel stack" style={{ gap: '14px' }}>
+        {/* Status Filter Segmented */}
+        <div className="scroll-x">
           <div className="segmented">
             {STATUS_FILTERS.map((sf) => (
               <button
@@ -186,57 +185,51 @@ export function CampusTasks() {
               </button>
             ))}
           </div>
-
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
-            Showing {tasks.length} active gig(s)
-          </span>
         </div>
 
         {/* Category Pills */}
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingTop: '12px' }}>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`pill ${category === c ? 'pill-active' : ''}`}
-              onClick={() => setCategory(c)}
-            >
-              {c}
-            </button>
-          ))}
+        <div className="scroll-x">
+          {CATEGORIES.map((c) => {
+            const isActive = category === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                className={`pill ${isActive ? 'pill-active' : ''}`}
+                onClick={() => setCategory(c)}
+                style={{ flexShrink: 0 }}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Tasks Grid */}
       {loading ? (
-        <div className="grid-2">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
+        <SkeletonGrid count={4} height={240} />
       ) : tasks.length === 0 ? (
         <EmptyState
           icon={CheckSquare}
           title="No errands found"
-          description={
+          hint={
             category !== 'All' || statusFilter !== 'ALL'
               ? 'No tasks matching the selected filters.'
               : 'Need something picked up or moved? Post your errand and a peer will help!'
           }
           action={
-            <button
-              type="button"
-              className="btn btn-secondary"
+            <MagneticButton
+              className="btn btn-primary"
               onClick={() => (user ? setCreateOpen(true) : openAuth())}
             >
-              <Plus size={15} />
+              <Plus size={16} strokeWidth={2.8} />
               <span>Post First Task</span>
-            </button>
+            </MagneticButton>
           }
         />
       ) : (
-        <motion.div layout className="grid-2">
+        <motion.div layout className="grid-cards">
           <AnimatePresence mode="popLayout">
             {tasks.map((task) => {
               const isOpen = task.status === 'OPEN';
@@ -253,140 +246,159 @@ export function CampusTasks() {
                   animate="visible"
                   exit="exit"
                   layout
-                  className="card card-pop"
-                  style={{ display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative' }}
+                  className="card card-pop stack"
+                  style={{
+                    padding: '24px',
+                    gap: '18px',
+                    justifyContent: 'space-between',
+                  }}
                 >
                   {/* Top Bar: Creator + Reward Badge */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Avatar name={task.creatorName} />
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{task.creatorName}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
-                          Hostel: {task.creatorHostel || 'Campus'}
+                  <div className="stack" style={{ gap: '14px' }}>
+                    <div className="row-between" style={{ alignItems: 'flex-start' }}>
+                      <div className="row" style={{ gap: '12px' }}>
+                        <Avatar name={task.creatorName} size={40} />
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--ink)' }}>
+                            {task.creatorName}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--ink-faint)', fontWeight: 600 }}>
+                            Hostel: {task.creatorHostel || 'Campus'}
+                          </div>
                         </div>
+                      </div>
+
+                      <div
+                        className="badge"
+                        style={{
+                          background: 'var(--mint-soft)',
+                          color: 'var(--mint)',
+                          borderColor: 'var(--mint)',
+                          fontSize: '0.92rem',
+                          padding: '6px 12px',
+                          gap: '6px',
+                        }}
+                      >
+                        <Coins size={15} strokeWidth={2.6} />
+                        <span>₹{task.reward}</span>
                       </div>
                     </div>
 
+                    {/* Task Content */}
+                    <div className="stack" style={{ gap: '8px' }}>
+                      <div className="row wrap" style={{ gap: '8px' }}>
+                        <span className="badge badge-secondary">{task.category}</span>
+                        <span
+                          className="badge"
+                          style={{
+                            background: isOpen
+                              ? 'var(--mint-soft)'
+                              : isAssigned
+                              ? 'var(--sun-soft)'
+                              : 'var(--violet-soft)',
+                            color: isOpen ? 'var(--mint)' : isAssigned ? 'var(--sun)' : 'var(--violet)',
+                            borderColor: isOpen ? 'var(--mint)' : isAssigned ? 'var(--sun)' : 'var(--violet)',
+                          }}
+                        >
+                          {task.status}
+                        </span>
+                      </div>
+
+                      <h3 style={{ fontSize: '1.12rem', fontWeight: 800, lineHeight: 1.3, color: 'var(--ink)' }}>
+                        {task.title}
+                      </h3>
+                      <p style={{ fontSize: '0.9rem', color: 'var(--ink-soft)', lineHeight: 1.55 }}>
+                        {task.description}
+                      </p>
+                    </div>
+
+                    {/* Pickup & Drop Details */}
                     <div
+                      className="stack"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.15))',
-                        border: '1px solid rgba(16, 185, 129, 0.4)',
-                        padding: '6px 12px',
-                        borderRadius: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontWeight: 800,
-                        fontSize: '1rem',
-                        color: '#34d399',
-                        boxShadow: '0 0 12px rgba(16, 185, 129, 0.15)',
+                        background: 'var(--surface-inset)',
+                        padding: '12px 14px',
+                        borderRadius: 'var(--r-sm)',
+                        fontSize: '0.82rem',
+                        gap: '8px',
+                        border: '1.5px solid var(--line)',
                       }}
                     >
-                      <Coins size={15} />
-                      <span>₹{task.reward}</span>
-                    </div>
-                  </div>
-
-                  {/* Task Content */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span className="badge badge-secondary">{task.category}</span>
-                      <span
-                        className="badge"
-                        style={{
-                          background: isOpen
-                            ? 'rgba(16, 185, 129, 0.15)'
-                            : isAssigned
-                            ? 'rgba(245, 158, 11, 0.15)'
-                            : 'rgba(99, 102, 241, 0.15)',
-                          color: isOpen ? '#34d399' : isAssigned ? '#fbbf24' : '#818cf8',
-                        }}
-                      >
-                        {task.status}
-                      </span>
-                    </div>
-
-                    <h3 style={{ fontSize: '1.02rem', fontWeight: 700, marginBottom: '6px', lineHeight: 1.3 }}>
-                      {task.title}
-                    </h3>
-                    <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                      {task.description}
-                    </p>
-                  </div>
-
-                  {/* Pickup & Drop Details */}
-                  <div
-                    style={{
-                      background: 'rgba(15, 23, 42, 0.4)',
-                      padding: '10px 12px',
-                      borderRadius: '10px',
-                      fontSize: '0.8rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '6px',
-                      border: '1px solid var(--border-glass)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
-                      <MapPin size={13} color="var(--accent-coral)" />
-                      <span><strong>Pickup:</strong> {task.pickupLocation || 'Campus'}</span>
-                      <ArrowRight size={12} style={{ opacity: 0.5 }} />
-                      <span><strong>Drop:</strong> {task.dropLocation || 'Hostel'}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-subtle)' }}>
-                      <Clock size={13} color="var(--accent-amber)" />
-                      <span><strong>Deadline:</strong> {task.deadline || 'Within 2 hours'}</span>
+                      <div className="row wrap" style={{ gap: '8px', color: 'var(--ink)' }}>
+                        <MapPin size={14} color="var(--coral)" strokeWidth={2.4} />
+                        <span><strong>Pickup:</strong> {task.pickupLocation || 'Campus'}</span>
+                        <ArrowRight size={13} style={{ opacity: 0.5 }} />
+                        <span><strong>Drop:</strong> {task.dropLocation || 'Hostel'}</span>
+                      </div>
+                      {task.deadline && (
+                        <div className="row" style={{ gap: '8px', color: 'var(--ink-soft)' }}>
+                          <Clock size={14} color="var(--sun)" strokeWidth={2.4} />
+                          <span><strong>Deadline:</strong> {task.deadline}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Bottom Action / Status Bar */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid var(--border-glass)', marginTop: 'auto' }}>
+                  <div
+                    className="row-between wrap"
+                    style={{
+                      paddingTop: '14px',
+                      borderTop: '1.5px solid var(--line)',
+                      gap: '10px',
+                      alignItems: 'center',
+                      marginTop: 'auto',
+                    }}
+                  >
                     {isAssigned && (
-                      <span style={{ fontSize: '0.8rem', color: '#fbbf24', fontWeight: 600 }}>
+                      <span style={{ fontSize: '0.84rem', color: 'var(--sun)', fontWeight: 700 }}>
                         Runner: {task.assignedToName || 'Assigned'}
                       </span>
                     )}
                     {isCompleted && (
-                      <span style={{ fontSize: '0.8rem', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <CheckCircle2 size={14} /> Completed
+                      <span className="row" style={{ gap: '6px', fontSize: '0.84rem', color: 'var(--mint)', fontWeight: 700 }}>
+                        <CheckCircle2 size={16} /> Completed
                       </span>
                     )}
 
-                    {/* Action Buttons */}
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-                      {isOpen && (
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          onClick={() => handleAcceptTask(task.id)}
-                          disabled={claimingId === task.id}
-                        >
-                          {claimingId === task.id ? (
-                            <>
-                              <Loader2 size={13} className="spin" />
-                              <span>Claiming...</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckSquare size={13} />
-                              <span>Claim Task (₹{task.reward})</span>
-                            </>
-                          )}
-                        </button>
-                      )}
+                    {isOpen && (
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptTask(task.id)}
+                        disabled={claimingId === task.id}
+                        className="btn btn-primary btn-sm"
+                        style={{ marginLeft: 'auto' }}
+                      >
+                        {claimingId === task.id ? (
+                          <>
+                            <Loader2 size={14} className="spin" />
+                            <span>Claiming...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Package size={14} strokeWidth={2.4} />
+                            <span>Claim Gig (₹{task.reward})</span>
+                          </>
+                        )}
+                      </button>
+                    )}
 
-                      {isAssigned && (isCreator || isAssignee) && (
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleCompleteTask(task.id)}
-                          disabled={completingId === task.id}
-                        >
-                          {completingId === task.id ? 'Completing...' : 'Mark as Done'}
-                        </button>
-                      )}
-                    </div>
+                    {isAssigned && (isCreator || isAssignee) && (
+                      <button
+                        type="button"
+                        onClick={() => handleCompleteTask(task.id)}
+                        disabled={completingId === task.id}
+                        className="btn btn-secondary btn-sm"
+                        style={{ marginLeft: 'auto' }}
+                      >
+                        {completingId === task.id ? (
+                          <Loader2 size={14} className="spin" />
+                        ) : (
+                          <CheckCircle2 size={14} />
+                        )}
+                        <span>Mark Done</span>
+                      </button>
+                    )}
                   </div>
                 </motion.article>
               );

@@ -13,16 +13,32 @@ const STORAGE_KEY = 'campussync_theme';
  */
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
+    if (typeof document !== 'undefined' && document.documentElement.dataset.theme) {
+      return document.documentElement.dataset.theme;
+    }
+    return 'light';
+  });
+
+  /** Null once the user picks explicitly — after that we stop following the OS. */
+  const [followsSystem, setFollowsSystem] = useState(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY) || 'light';
+      return !localStorage.getItem(STORAGE_KEY);
     } catch {
-      return 'light';
+      return true;
     }
   });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    if (!followsSystem) return undefined;
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = (e) => setTheme(e.matches ? 'dark' : 'light');
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [followsSystem]);
 
   const toggle = useCallback(() => {
     setTheme((prev) => {

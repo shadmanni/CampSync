@@ -18,12 +18,12 @@
     />
 
     <script>
-      // Always default to light mode ("Campus Pop")
+      // Always open in light mode ("Campus Pop") by default.
+      // Only honour a saved preference if the user explicitly toggled.
       (function () {
         try {
           var saved = localStorage.getItem('campussync_theme');
-          var theme = saved || 'light';
-          document.documentElement.dataset.theme = theme;
+          document.documentElement.dataset.theme = saved || 'light';
         } catch (e) {
           document.documentElement.dataset.theme = 'light';
         }

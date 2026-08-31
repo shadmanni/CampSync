@@ -63,64 +63,32 @@ export function CampusNearby() {
   return (
     <div className="accent-sky stack-lg">
       <SectionHead
-        eyebrow="Module 04 · CampusNearby"
         title="Student pricing, within walking distance"
         subtitle="Deals from verified campus partners, plus the ones students found first. Codes are one tap away."
       />
 
       {/* Filters */}
       <div className="stack" style={{ gap: 12 }}>
-        <div
-          className="row"
-          style={{
-            gap: 2,
-            padding: 4,
-            borderRadius: 'var(--r-pill)',
-            border: 'var(--line-width) solid var(--line)',
-            background: 'var(--surface-2)',
-            alignSelf: 'flex-start',
-            flexWrap: 'wrap',
-          }}
-        >
-          {SOURCES.map((s) => {
-            const isActive = source === s.id;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSource(s.id)}
-                style={{
-                  position: 'relative',
-                  padding: '9px 16px',
-                  border: 0,
-                  borderRadius: 'var(--r-pill)',
-                  background: 'none',
-                  cursor: 'pointer',
-                  fontSize: 'var(--t-small)',
-                  fontWeight: 700,
-                  color: isActive ? 'var(--accent)' : 'var(--ink-soft)',
-                }}
-              >
-                {isActive && (
-                  <motion.span
-                    layoutId="nearby-source"
-                    transition={spring.layout}
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      borderRadius: 'var(--r-pill)',
-                      background: 'var(--accent-soft)',
-                    }}
-                  />
-                )}
-                <span style={{ position: 'relative' }}>{s.label}</span>
-              </button>
-            );
-          })}
+        <div className="scroll-x">
+          <div className="segmented">
+            {SOURCES.map((s) => {
+              const isActive = source === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`segmented-item ${isActive ? 'active' : ''}`}
+                  onClick={() => setSource(s.id)}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {categories.length > 2 && (
-          <div className="row" style={{ gap: 7, overflowX: 'auto', paddingBottom: 2 }}>
+          <div className="scroll-x">
             {categories.map((c) => (
               <button
                 key={c}
@@ -128,7 +96,7 @@ export function CampusNearby() {
                 className="chip"
                 data-active={category === c}
                 onClick={() => setCategory(c)}
-                style={{ position: 'relative' }}
+                style={{ position: 'relative', flexShrink: 0 }}
               >
                 {category === c && (
                   <motion.span

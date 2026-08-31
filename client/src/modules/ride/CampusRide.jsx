@@ -177,9 +177,8 @@ export function CampusRide() {
   return (
     <div className="accent-mint stack-lg">
       <SectionHead
-        eyebrow="Module 03 · CampusRide & Events"
-        title="Share the fare, and the calendar"
-        subtitle={`${seatsLeft} open ${seatsLeft === 1 ? 'seat' : 'seats'} right now. Seat counts sync live across every device watching.`}
+        title="Share the journey, find the crew"
+        subtitle="Split cab fares to the station or airport, and catch campus club events. Seat counts update live across every device."
         action={
           <MagneticButton
             className="btn btn-primary"
@@ -191,66 +190,30 @@ export function CampusRide() {
         }
       />
 
-      {/* View switch */}
-      <div
-        className="row"
-        style={{
-          gap: 2,
-          padding: 4,
-          borderRadius: 'var(--r-pill)',
-          border: 'var(--line-width) solid var(--line)',
-          background: 'var(--surface-2)',
-          alignSelf: 'flex-start',
-        }}
-      >
-        {[
-          { id: 'rides', label: 'Carpools', icon: CarFront, count: rides.length },
-          { id: 'events', label: 'Events', icon: CalendarDays, count: events.length },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = view === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setView(tab.id)}
-              style={{
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-                padding: '9px 17px',
-                border: 0,
-                borderRadius: 'var(--r-pill)',
-                background: 'none',
-                cursor: 'pointer',
-                fontSize: 'var(--t-small)',
-                fontWeight: 700,
-                color: isActive ? 'var(--accent)' : 'var(--ink-soft)',
-              }}
-            >
-              {isActive && (
-                <motion.span
-                  layoutId="ride-view-indicator"
-                  transition={spring.layout}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 'var(--r-pill)',
-                    background: 'var(--accent-soft)',
-                  }}
-                />
-              )}
-              <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 7 }}>
+      <div className="scroll-x">
+        <div className="segmented">
+          {[
+            { id: 'rides', label: 'Carpools', icon: CarFront, count: rides.length },
+            { id: 'events', label: 'Events', icon: CalendarDays, count: events.length },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = view === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                className={`segmented-item ${isActive ? 'active' : ''}`}
+                onClick={() => setView(tab.id)}
+              >
                 <Icon size={15} strokeWidth={2.4} />
-                {tab.label}
-                <span className="t-num" style={{ opacity: 0.6, fontSize: '0.72rem' }}>
+                <span>{tab.label}</span>
+                <span className="badge" style={{ padding: '2px 8px', fontSize: '0.72rem', background: isActive ? 'var(--accent)' : 'var(--surface)', color: isActive ? 'var(--on-accent)' : 'var(--ink-faint)' }}>
                   {tab.count}
                 </span>
-              </span>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <AnimatePresence mode="wait" initial={false}>
@@ -320,7 +283,7 @@ function RideCard({ ride, joined, busy, onJoin }) {
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="card-pop card-topline"
+      className="card-pop"
       whileHover={{ y: -3 }}
       transition={spring.snappy}
       style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}
@@ -441,7 +404,7 @@ function EventCard({ event, going, onRsvp }) {
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="card-pop card-topline"
+      className="card-pop"
       whileHover={{ y: -3 }}
       transition={spring.snappy}
       style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}

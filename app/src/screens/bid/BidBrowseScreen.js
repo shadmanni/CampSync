@@ -1,407 +1,401 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  RefreshControl,
-  TextInput
+  View, Text, FlatList, StyleSheet, TouchableOpacity,
+  TextInput, Modal, ScrollView, RefreshControl
 } from "react-native";
 import {
-  Gavel,
-  Search,
-  Plus,
-  Clock,
-  TrendingUp,
-  Tag,
-  Sparkles
+  Gavel, Plus, TrendingUp, Timer, Flame, PackageOpen, X, Send
 } from "lucide-react-native";
-import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
+import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
 import { bidService } from "../../services/bidService";
 import { socketService } from "../../services/socketService";
-import { HeaderBar } from "../../components/common/HeaderBar";
+import { useAuth } from "../../context/AuthContext";
 import { PopCard } from "../../components/common/PopCard";
-import { PopPill } from "../../components/common/PopPill";
 import { PopButton } from "../../components/common/PopButton";
-import { PopAvatar } from "../../components/common/PopAvatar";
-import { SkeletonLoader } from "../../components/common/SkeletonLoader";
+import { PopPill } from "../../components/common/PopPill";
+import { PopHeader } from "../../components/common/PopHeader";
 import { EmptyState } from "../../components/common/EmptyState";
-import { ErrorState } from "../../components/common/ErrorState";
-import { BidDetailModal } from "./BidDetailModal";
-import { CreateListingModal } from "./CreateListingModal";
+import { SkeletonCard } from "../../components/common/SkeletonLoader";
 
-const BID_CATEGORIES = ["All Items", "Electronics", "Textbooks", "Hostel Gear", "Cycles"];
+const ACCENT = colors.coral;
+const QUICK_RAISES = [50, 100, 500];
+
+function useCountdown(item) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  let deadline = null;
+  if (item.endsAt) {
+    const t = new Date(item.endsAt).getTime();
+    if (!Number.isNaN(t)) deadline = t;
+  }
+  if (!deadline) {
+    const m = /in\s+(\d+)\s*(minute|hour|day)/i.exec(item.expiresAt || "");
+    if (m) {
+      const unit = { minute: 60000, hour: 3600000, day: 86400000 }[m[2].toLowerCase()];
+      deadline = Date.now() + Number(m[1]) * unit;
+    }
+  }
+  if (!deadline) return null;
+  const left = deadline - now;
+  if (left <= 0) return { text: "Closed", urgent: true, expired: true };
+  const h = Math.floor(left / 3600000);
+  const min = Math.floor((left % 3600000) / 60000);
+  const s = Math.floor((left % 60000) / 1000);
+  return {
+    text: h > 0 ? `${h}h ${String(min).padStart(2, "0")}m` : `${min}:${String(s).padStart(2, "0")}`,
+    urgent: left < 3600000,
+    expired: false,
+  };
+}
 
 export const BidBrowseScreen = () => {
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("All Items");
-  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [bidTarget, setBidTarget] = useState(null);
+  const [listOpen, setListOpen] = useState(false);
 
-  const fetchItems = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    setError(null);
+  const load = useCallback(async () => {
     try {
-      const data = await bidService.getItems(selectedCategory, "ALL", searchQuery);
-      setItems(data || []);
+      const data = await bidService.getItems();
+      setItems(data?.items || data || []);
     } catch (err) {
-      setError(err.message || "Failed to load marketplace items.");
+      console.warn("[BidBrowse] Load error:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedCategory, searchQuery]);
-
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
-
-  // Real-time highest bid updates
-  useEffect(() => {
-    const handleNewHighestBid = (update) => {
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === update.itemId
-            ? { ...it, currentBid: update.amount, highestBidder: update.bidderName, bidsCount: (it.bidsCount || 0) + 1 }
-            : it
-        )
-      );
-    };
-
-    socketService.on("bid:new_highest", handleNewHighestBid);
-    return () => {
-      socketService.off("bid:new_highest", handleNewHighestBid);
-    };
   }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchItems(true);
+  useEffect(() => { load(); }, [load]);
+  const onRefresh = () => { setRefreshing(true); load(); };
+
+  // Real-time: listen for bid updates from other clients
+  useEffect(() => {
+    socketService.connect();
+    const handler = ({ itemId, currentBid, highestBidderName, bidCount }) => {
+      setItems(prev => prev.map(it =>
+        (it.id || it._id) === itemId
+          ? { ...it, currentBid, highestBidderName, bidCount }
+          : it
+      ));
+    };
+    socketService.on("bid:new_highest", handler);
+    return () => socketService.off("bid:new_highest", handler);
+  }, []);
+
+  const handleBid = async (item, amount) => {
+    try {
+      const res = await bidService.placeBid(item._id || item.id, amount, user?.name);
+      setItems(prev => prev.map(it =>
+        (it._id || it.id) === (item._id || item.id)
+          ? { ...it, currentBid: res.currentBid || amount, bidCount: (res.bidCount || (it.bidCount || 0) + 1), highestBidderName: user?.name }
+          : it
+      ));
+      setBidTarget(null);
+    } catch (err) {
+      console.warn("[BidBrowse] Bid error:", err);
+    }
   };
 
-  const renderItemCard = ({ item }) => {
-    const isAuction = item.type === "AUCTION";
-    const currentPrice = item.currentBid || item.startingPrice || 0;
-
-    return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={() => setSelectedItem(item)}
-      >
-        <PopCard style={styles.card}>
-          <View style={styles.cardTop}>
-            <View style={[styles.badge, { backgroundColor: isAuction ? colors.coralSoft : colors.mintSoft }]}>
-              <Text style={[styles.badgeText, { color: isAuction ? colors.coral : colors.mint }]}>
-                {isAuction ? "⚡ LIVE AUCTION" : "🏷️ FIXED PRICE"}
-              </Text>
-            </View>
-            <View style={styles.timerRow}>
-              <Clock size={12} color={colors.inkFaint} />
-              <Text style={styles.timerText}>{item.endsIn || "Ends today"}</Text>
-            </View>
-          </View>
-
-          <Text style={styles.itemTitle}>{item.title}</Text>
-
-          <View style={styles.categoryChip}>
-            <Tag size={11} color={colors.coral} />
-            <Text style={styles.categoryChipText}>{item.category || "General"}</Text>
-          </View>
-
-          {/* Price Block */}
-          <PopCard style={styles.priceContainer} variant="inset">
-            <View>
-              <Text style={styles.priceLabel}>
-                {isAuction ? "CURRENT HIGHEST BID" : "LISTED PRICE"}
-              </Text>
-              <Text style={styles.priceValue}>₹{currentPrice.toLocaleString()}</Text>
-            </View>
-            {isAuction && (
-              <View style={styles.bidsBadge}>
-                <TrendingUp size={12} color={colors.coral} />
-                <Text style={styles.bidsText}>{item.bidsCount || 0} bids</Text>
-              </View>
-            )}
-          </PopCard>
-
-          <View style={styles.cardFooter}>
-            <View style={styles.sellerInfo}>
-              <PopAvatar name={item.sellerName || "Student"} size={26} />
-              <Text style={styles.sellerName} numberOfLines={1}>
-                {item.sellerName || "Student"}
-              </Text>
-            </View>
-
-            <PopButton
-              title={isAuction ? "Place Bid" : "Buy Now"}
-              onPress={() => setSelectedItem(item)}
-              variant="coral"
-              size="sm"
-            />
-          </View>
-        </PopCard>
-      </TouchableOpacity>
-    );
+  const handleList = async (payload) => {
+    try {
+      const created = await bidService.createItem(payload);
+      setItems(prev => [created, ...prev]);
+      setListOpen(false);
+    } catch (err) {
+      console.warn("[BidBrowse] List error:", err);
+    }
   };
+
+  const renderItem = ({ item }) => <ItemCard item={item} onBid={() => setBidTarget(item)} />;
 
   return (
     <View style={styles.container}>
-      <HeaderBar
+      <PopHeader
         title="CampusBid"
-        subtitle="Verified Peer Marketplace & Auctions"
-        accentColor={colors.coral}
-        onNotificationPress={() => {}}
+        subtitle={`${items.filter(i => i.status !== "SOLD").length} open auctions`}
+        accent={ACCENT}
+        icon={Gavel}
       />
 
-      {/* Search Input */}
-      <View style={styles.searchBox}>
-        <Search size={16} color={colors.inkFaint} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search items, textbooks, electronics..."
-          placeholderTextColor={colors.inkFaint}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-
-      {/* Categories */}
-      <View style={styles.categoryRow}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={BID_CATEGORIES}
-          keyExtractor={(item) => item}
-          renderItem={({ item }) => (
-            <PopPill
-              label={item}
-              active={selectedCategory === item}
-              accentColor={colors.coral}
-              accentSoftColor={colors.coralSoft}
-              onPress={() => setSelectedCategory(item)}
-            />
-          )}
-          contentContainerStyle={styles.categoryList}
-        />
-      </View>
-
-      {/* Items List */}
-      {loading && !refreshing ? (
-        <SkeletonLoader count={3} />
-      ) : error ? (
-        <ErrorState
-          title="Could not load marketplace"
-          message={error}
-          onRetry={() => fetchItems()}
-        />
+      {loading ? (
+        <View style={{ padding: spacing.containerPadding, gap: 16 }}>
+          <SkeletonCard height={230} /><SkeletonCard height={230} />
+        </View>
       ) : (
         <FlatList
           data={items}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItemCard}
+          keyExtractor={item => item._id || item.id}
+          renderItem={renderItem}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.coral}
-              colors={[colors.coral]}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
           ListEmptyComponent={
-            <EmptyState
-              icon={<Gavel size={32} color={colors.coral} />}
-              title="No items found"
-              description="Be the first student to list a textbook, cycle, or electronic gadget!"
-              actionTitle="List an Item"
-              onAction={() => setCreateModalVisible(true)}
-              accentVariant="coral"
-            />
+            <EmptyState icon={PackageOpen} title="Nothing up for auction right now" hint="Textbooks, cycles, calculators — someone always needs yours." />
           }
         />
       )}
 
-      {/* Floating Plus Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        onPress={() => setCreateModalVisible(true)}
-      >
-        <Plus size={24} color={colors.surface} />
+      {/* FAB */}
+      <TouchableOpacity style={styles.fab} onPress={() => setListOpen(true)} activeOpacity={0.85}>
+        <Plus size={24} color={colors.onAccent} strokeWidth={2.8} />
       </TouchableOpacity>
 
-      {/* Detail & Create Modals */}
-      <BidDetailModal
-        visible={Boolean(selectedItem)}
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-        onBidSuccess={(updated) => {
-          setItems((prev) =>
-            prev.map((it) => (it.id === updated.id ? { ...it, ...updated } : it))
-          );
-        }}
-      />
-
-      <CreateListingModal
-        visible={createModalVisible}
-        onClose={() => setCreateModalVisible(false)}
-        onCreated={(newItem) => {
-          setItems((prev) => [newItem, ...prev]);
-        }}
-      />
+      <BidModal item={bidTarget} onClose={() => setBidTarget(null)} onSubmit={handleBid} />
+      <ListItemModal visible={listOpen} onClose={() => setListOpen(false)} onSubmit={handleList} />
     </View>
   );
 };
 
+/* ── Item Card ── */
+function ItemCard({ item, onBid }) {
+  const countdown = useCountdown(item);
+  const closed = countdown?.expired || item.status === "SOLD";
+
+  return (
+    <PopCard accent={ACCENT} style={styles.itemCard}>
+      {/* Top row */}
+      <View style={styles.topRow}>
+        <View style={[styles.badge, { backgroundColor: colors.coralSoft }]}>
+          <Text style={[styles.badgeText, { color: ACCENT }]}>{item.category}</Text>
+        </View>
+        {countdown && (
+          <View style={[styles.badge, {
+            backgroundColor: countdown.urgent ? colors.roseSoft : colors.surfaceInset,
+          }]}>
+            {countdown.urgent && !countdown.expired
+              ? <Flame size={11} color={colors.rose} strokeWidth={2.8} />
+              : <Timer size={11} color={colors.inkSoft} strokeWidth={2.6} />}
+            <Text style={[styles.badgeText, {
+              color: countdown.urgent ? colors.rose : colors.inkSoft,
+              fontVariant: ["tabular-nums"],
+            }]}>{countdown.text}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Content */}
+      <Text style={styles.itemTitle} numberOfLines={2}>{item.title}</Text>
+      <Text style={styles.itemDesc} numberOfLines={2}>{item.description}</Text>
+      <Text style={styles.sellerText}>Listed by {item.sellerName}</Text>
+
+      {/* Price block */}
+      <View style={styles.priceBlock}>
+        <View>
+          <Text style={styles.priceLabel}>Current highest bid</Text>
+          <Text style={styles.priceValue}>₹{item.currentBid?.toLocaleString()}</Text>
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={styles.bidCountText}>{item.bidCount || 0} {(item.bidCount || 0) === 1 ? "bid" : "bids"}</Text>
+          <Text style={styles.highBidder} numberOfLines={1}>{item.highestBidderName || "No bids yet"}</Text>
+        </View>
+      </View>
+
+      <PopButton
+        title={closed ? "Auction closed" : "Place a bid"}
+        accent={ACCENT}
+        icon={Gavel}
+        block
+        onPress={onBid}
+        disabled={closed}
+      />
+    </PopCard>
+  );
+}
+
+/* ── Bid Modal ── */
+function BidModal({ item, onClose, onSubmit }) {
+  const [amount, setAmount] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (item) setAmount((item.currentBid || 0) + QUICK_RAISES[0]);
+  }, [item]);
+
+  const minimum = (item?.currentBid || 0) + 1;
+
+  const submit = async () => {
+    if (busy || amount < minimum) return;
+    setBusy(true);
+    await onSubmit(item, amount);
+    setBusy(false);
+  };
+
+  if (!item) return null;
+
+  return (
+    <Modal visible={Boolean(item)} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Place your bid</Text>
+            <TouchableOpacity onPress={onClose}><X size={22} color={colors.ink} /></TouchableOpacity>
+          </View>
+
+          <Text style={styles.modalSubtitle}>{item.title}</Text>
+
+          <View style={styles.priceBlock}>
+            <Text style={styles.priceLabel}>Current highest</Text>
+            <Text style={styles.priceValue}>₹{item.currentBid?.toLocaleString()}</Text>
+          </View>
+
+          <Text style={[typography.label, { marginBottom: 8 }]}>Your bid (minimum ₹{minimum})</Text>
+          <TextInput
+            style={styles.bidInput}
+            keyboardType="number-pad"
+            value={String(amount)}
+            onChangeText={t => setAmount(Number(t) || 0)}
+          />
+
+          <View style={styles.quickRaises}>
+            {QUICK_RAISES.map(step => (
+              <TouchableOpacity
+                key={step}
+                style={styles.raiseBtn}
+                onPress={() => setAmount((item.currentBid || 0) + step)}
+              >
+                <TrendingUp size={13} color={ACCENT} strokeWidth={2.8} />
+                <Text style={[styles.raiseBtnText, { color: ACCENT }]}>+₹{step}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <PopButton
+            title={busy ? "Placing…" : `Bid ₹${amount.toLocaleString()}`}
+            accent={ACCENT}
+            icon={Gavel}
+            block
+            size="lg"
+            onPress={submit}
+            loading={busy}
+            disabled={amount < minimum}
+          />
+
+          <Text style={styles.disclaimer}>
+            The seller sees your verified name. Bids are binding on campus honour code.
+          </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/* ── List Item Modal ── */
+function ListItemModal({ visible, onClose, onSubmit }) {
+  const [form, setForm] = useState({ title: "", description: "", startingPrice: "", category: "Books" });
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (visible) setForm({ title: "", description: "", startingPrice: "", category: "Books" });
+  }, [visible]);
+
+  const submit = async () => {
+    if (busy || !form.title.trim() || !form.startingPrice) return;
+    setBusy(true);
+    await onSubmit({ ...form, startingPrice: Number(form.startingPrice) });
+    setBusy(false);
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>List something for auction</Text>
+            <TouchableOpacity onPress={onClose}><X size={22} color={colors.ink} /></TouchableOpacity>
+          </View>
+          <ScrollView keyboardShouldPersistTaps="handled">
+            <Text style={[typography.label, { marginBottom: 8 }]}>What are you selling?</Text>
+            <TextInput style={styles.modalInput} placeholder="e.g. Engineering Mathematics" placeholderTextColor={colors.inkFaint} value={form.title} onChangeText={t => setForm(f => ({ ...f, title: t }))} />
+
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.label, { marginBottom: 8 }]}>Starting price (₹)</Text>
+                <TextInput style={styles.modalInput} keyboardType="number-pad" placeholder="400" placeholderTextColor={colors.inkFaint} value={form.startingPrice} onChangeText={t => setForm(f => ({ ...f, startingPrice: t }))} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.label, { marginBottom: 8 }]}>Category</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", gap: 6, paddingBottom: 14 }}>
+                    {["Books", "Electronics", "Furniture", "Transport", "Other"].map(c => (
+                      <PopPill key={c} label={c} active={form.category === c} onPress={() => setForm(f => ({ ...f, category: c }))} accent={ACCENT} />
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            </View>
+
+            <Text style={[typography.label, { marginBottom: 8 }]}>Condition & pickup</Text>
+            <TextInput style={[styles.modalInput, { height: 80, textAlignVertical: "top" }]} multiline placeholder="Be honest about wear. Say where on campus you can hand it over." placeholderTextColor={colors.inkFaint} value={form.description} onChangeText={t => setForm(f => ({ ...f, description: t }))} />
+          </ScrollView>
+
+          <View style={styles.modalActions}>
+            <PopButton title="Cancel" variant="ghost" onPress={onClose} />
+            <PopButton title={busy ? "Listing…" : "Open the auction"} accent={ACCENT} icon={Gavel} onPress={submit} loading={busy} disabled={!form.title.trim() || !form.startingPrice} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvas
+  container: { flex: 1, backgroundColor: colors.canvas },
+  listContent: { paddingHorizontal: spacing.containerPadding, paddingBottom: 100, paddingTop: 16, gap: 16 },
+  itemCard: { padding: 20 },
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12 },
+  badge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill, ...borders.card },
+  badgeText: { fontSize: 11, fontWeight: "700" },
+  itemTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, marginBottom: 6, lineHeight: 22 },
+  itemDesc: { fontSize: 14, color: colors.inkSoft, lineHeight: 20, marginBottom: 8 },
+  sellerText: { fontSize: 11, color: colors.inkFaint, marginBottom: 14 },
+  priceBlock: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end",
+    backgroundColor: colors.surfaceInset, borderRadius: radii.sm, ...borders.subtle,
+    padding: 14, marginBottom: 14,
   },
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    marginHorizontal: spacing.containerPadding,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-    paddingHorizontal: spacing.md,
-    height: 44,
-    ...shadows.hardSm
-  },
-  searchIcon: {
-    marginRight: spacing.sm
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: "500"
-  },
-  categoryRow: {
-    paddingVertical: spacing.md
-  },
-  categoryList: {
-    paddingHorizontal: spacing.containerPadding
-  },
-  listContent: {
-    paddingHorizontal: spacing.containerPadding,
-    paddingBottom: 90
-  },
-  card: {
-    marginBottom: spacing.md
-  },
-  cardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.sm
-  },
-  badge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.borderInk
-  },
-  badgeText: {
-    ...typography.badge,
-    fontSize: 10.5
-  },
-  timerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4
-  },
-  timerText: {
-    ...typography.bodySm,
-    fontSize: 11
-  },
-  itemTitle: {
-    ...typography.heading,
-    fontSize: 16,
-    marginBottom: 4
-  },
-  categoryChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: spacing.md
-  },
-  categoryChipText: {
-    ...typography.caption,
-    color: colors.inkFaint,
-    fontSize: 11
-  },
-  priceContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.md,
-    marginBottom: spacing.md
-  },
-  priceLabel: {
-    ...typography.caption,
-    fontSize: 9.5,
-    color: colors.inkFaint
-  },
-  priceValue: {
-    ...typography.title,
-    fontSize: 22,
-    color: colors.coral
-  },
-  bidsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.coralSoft,
-    borderWidth: 1,
-    borderColor: colors.borderInk,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radii.pill
-  },
-  bidsText: {
-    ...typography.badge,
-    color: colors.coral,
-    fontSize: 11
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center"
-  },
-  sellerInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    maxWidth: 160
-  },
-  sellerName: {
-    ...typography.bodySm,
-    color: colors.ink,
-    fontWeight: "700"
-  },
+  priceLabel: { fontSize: 10, color: colors.inkFaint, marginBottom: 2 },
+  priceValue: { fontSize: 22, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
+  bidCountText: { fontSize: 10, color: colors.inkFaint },
+  highBidder: { fontSize: 11, fontWeight: "700", color: colors.inkSoft, maxWidth: 130 },
   fab: {
-    position: "absolute",
-    bottom: 22,
-    right: 18,
-    width: 56,
-    height: 56,
-    borderRadius: radii.md,
-    backgroundColor: colors.coral,
-    borderWidth: 2,
-    borderColor: colors.borderInk,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.hard
-  }
+    position: "absolute", bottom: 24, right: 20,
+    width: 56, height: 56, borderRadius: 16,
+    backgroundColor: ACCENT, ...borders.card, ...shadows.hard,
+    alignItems: "center", justifyContent: "center",
+  },
+  // Modals
+  modalOverlay: { flex: 1, backgroundColor: "rgba(23,21,15,0.5)", justifyContent: "flex-end" },
+  modalContent: {
+    backgroundColor: colors.surface, borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl,
+    ...borders.card, borderBottomWidth: 0,
+    paddingHorizontal: spacing.containerPadding, paddingTop: 20, paddingBottom: 32,
+    maxHeight: "85%",
+  },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: "800", color: colors.ink },
+  modalSubtitle: { fontSize: 15, color: colors.inkSoft, marginBottom: 16 },
+  modalInput: {
+    backgroundColor: colors.surfaceInset, borderRadius: radii.sm, ...borders.card,
+    padding: 14, fontSize: 15, color: colors.ink, marginBottom: 14,
+  },
+  bidInput: {
+    backgroundColor: colors.surfaceInset, borderRadius: radii.sm, ...borders.card,
+    padding: 14, fontSize: 22, fontWeight: "800", color: colors.ink,
+    textAlign: "center", fontVariant: ["tabular-nums"], marginBottom: 14,
+  },
+  quickRaises: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  raiseBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 5, paddingVertical: 10, borderRadius: radii.sm,
+    backgroundColor: colors.coralSoft, ...borders.card,
+  },
+  raiseBtnText: { fontSize: 13, fontWeight: "700" },
+  disclaimer: { fontSize: 11, color: colors.inkFaint, textAlign: "center", marginTop: 14 },
+  modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 12 },
 });

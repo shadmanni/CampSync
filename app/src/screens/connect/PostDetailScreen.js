@@ -1,26 +1,16 @@
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform
+  View, Text, ScrollView, StyleSheet,
+  TouchableOpacity, TextInput, KeyboardAvoidingView, Platform
 } from "react-native";
-import {
-  ArrowLeft,
-  ThumbsUp,
-  MessageSquare,
-  Send,
-  Sparkles
-} from "lucide-react-native";
-import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
+import { ArrowLeft, ArrowUp, MessageSquare, Send } from "lucide-react-native";
+import { colors, borders, radii, spacing, shadows, typography } from "../../theme/theme";
 import { connectService } from "../../services/connectService";
 import { useAuth } from "../../context/AuthContext";
 import { PopCard } from "../../components/common/PopCard";
 import { PopAvatar } from "../../components/common/PopAvatar";
+
+const ACCENT = colors.violet;
 
 export const PostDetailScreen = ({ route, navigation }) => {
   const { post: initialPost } = route.params;
@@ -32,28 +22,26 @@ export const PostDetailScreen = ({ route, navigation }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const handleUpvote = async () => {
-    const previousScore = post.upvotes || 0;
-    setPost({ ...post, upvotes: previousScore + 1 });
-
+    const prev = post.upvotes || 0;
+    setPost({ ...post, upvotes: prev + 1 });
     try {
-      const res = await connectService.upvotePost(post.id);
+      const res = await connectService.upvotePost(post._id || post.id);
       setPost({ ...post, upvotes: res.upvotes });
-    } catch (err) {
-      setPost({ ...post, upvotes: previousScore });
+    } catch {
+      setPost({ ...post, upvotes: prev });
     }
   };
 
   const handleAddComment = async () => {
-    if (!newComment || !newComment.trim()) return;
-
+    if (!newComment.trim()) return;
     setSubmitting(true);
     try {
       const comment = await connectService.addComment(
-        post.id,
+        post._id || post.id,
         newComment.trim(),
         user?.name || "Verified Student"
       );
-      setComments((prev) => [...prev, comment]);
+      setComments(prev => [...prev, comment]);
       setNewComment("");
     } catch (err) {
       console.warn("Failed to add comment:", err.message);
@@ -69,34 +57,28 @@ export const PostDetailScreen = ({ route, navigation }) => {
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={18} color={colors.ink} />
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <ArrowLeft size={20} color={ACCENT} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Discussion Thread</Text>
-        <View style={{ width: 38 }} />
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Main Post Card */}
-        <PopCard style={styles.mainCard}>
+        {/* Main Post */}
+        <PopCard accent={ACCENT} style={styles.mainCard}>
           <View style={styles.authorRow}>
             <PopAvatar
-              name={post.authorName || "Student"}
+              name={post.isAnonymous ? "" : post.authorName}
               anonymous={post.isAnonymous}
               size={40}
             />
-            <View style={styles.authorMeta}>
-              <Text style={styles.authorName}>
-                {post.authorName || "Verified Student"}
-              </Text>
-              <Text style={styles.timeText}>{post.createdAt || "Recently"}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.authorName}>{post.isAnonymous ? "Anonymous" : post.authorName}</Text>
+              <Text style={styles.timeText}>{new Date(post.createdAt).toLocaleDateString()}</Text>
             </View>
-            <View style={[styles.categoryBadge, { backgroundColor: colors.violetSoft }]}>
-              <Text style={styles.categoryBadgeText}>{post.category || "General"}</Text>
+            <View style={styles.categoryTag}>
+              <Text style={styles.categoryTagText}>{post.category || "General"}</Text>
             </View>
           </View>
 
@@ -104,40 +86,31 @@ export const PostDetailScreen = ({ route, navigation }) => {
           <Text style={styles.postBody}>{post.content}</Text>
 
           <View style={styles.statsRow}>
-            <TouchableOpacity
-              style={styles.upvoteBtn}
-              onPress={handleUpvote}
-              activeOpacity={0.7}
-            >
-              <ThumbsUp size={14} color={colors.violet} />
+            <TouchableOpacity style={styles.upvoteBtn} onPress={handleUpvote} activeOpacity={0.7}>
+              <ArrowUp size={16} color={ACCENT} strokeWidth={2.6} />
               <Text style={styles.upvoteText}>{post.upvotes || 0} upvotes</Text>
             </TouchableOpacity>
-
-            <View style={styles.repliesCountRow}>
-              <MessageSquare size={14} color={colors.inkSoft} />
-              <Text style={styles.repliesCountText}>{comments.length} replies</Text>
+            <View style={styles.commentsCountRow}>
+              <MessageSquare size={14} color={colors.inkFaint} strokeWidth={2} />
+              <Text style={styles.commentsCountText}>{comments.length} replies</Text>
             </View>
           </View>
         </PopCard>
 
-        {/* Section Heading */}
-        <Text style={styles.sectionHeading}>Responses ({comments.length})</Text>
+        <Text style={styles.sectionTitle}>Responses ({comments.length})</Text>
 
-        {/* Comments */}
         {comments.length === 0 ? (
-          <PopCard style={styles.emptyComments} variant="inset">
-            <Text style={styles.emptyText}>
-              No replies yet. Be the first student to join the conversation!
-            </Text>
+          <PopCard style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No replies yet. Be the first to join the conversation!</Text>
           </PopCard>
         ) : (
           comments.map((c, idx) => (
             <PopCard key={c.id || idx} style={styles.commentCard}>
               <View style={styles.commentHeader}>
-                <PopAvatar name={c.authorName || "Student"} size={28} />
-                <View style={styles.commentMeta}>
+                <PopAvatar name={c.authorName || "S"} size={28} />
+                <View style={{ flex: 1 }}>
                   <Text style={styles.commentAuthor}>{c.authorName || "Student"}</Text>
-                  <Text style={styles.commentTime}>{c.createdAt || "Recently"}</Text>
+                  <Text style={styles.commentTime}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : "Recently"}</Text>
                 </View>
               </View>
               <Text style={styles.commentBody}>{c.content}</Text>
@@ -146,23 +119,23 @@ export const PostDetailScreen = ({ route, navigation }) => {
         )}
       </ScrollView>
 
-      {/* Sticky Bottom Composer */}
+      {/* Bottom Composer */}
       <View style={styles.composerContainer}>
         <TextInput
           style={styles.composerInput}
-          placeholder="Share your thoughts or answer..."
+          placeholder="Write a reply…"
           placeholderTextColor={colors.inkFaint}
           value={newComment}
           onChangeText={setNewComment}
           multiline
         />
         <TouchableOpacity
-          style={[styles.sendBtn, !newComment.trim() && styles.sendBtnDisabled]}
+          style={[styles.sendBtn, !newComment.trim() && { opacity: 0.4 }]}
           onPress={handleAddComment}
           disabled={!newComment.trim() || submitting}
           activeOpacity={0.7}
         >
-          <Send size={16} color={colors.surface} />
+          <Send size={18} color={colors.onAccent} />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -170,192 +143,63 @@ export const PostDetailScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvas
-  },
+  container: { flex: 1, backgroundColor: colors.canvas },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.containerPadding,
-    paddingTop: 50,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.borderInk
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: spacing.containerPadding, paddingTop: 50, paddingBottom: spacing.sm,
+    backgroundColor: colors.canvasTint, borderBottomWidth: 1.5, borderBottomColor: colors.lineStrong,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radii.sm,
-    backgroundColor: colors.surface2,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.hardSm
+    width: 40, height: 40, borderRadius: radii.sm,
+    backgroundColor: colors.violetSoft, ...borders.card,
+    alignItems: "center", justifyContent: "center",
   },
-  headerTitle: {
-    ...typography.heading,
-    color: colors.ink
+  headerTitle: { ...typography.h3, color: ACCENT },
+  scrollContent: { padding: spacing.containerPadding, paddingBottom: 100, gap: 14 },
+  mainCard: { padding: spacing.lg, marginBottom: 8 },
+  authorRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: spacing.md },
+  authorName: { fontSize: 15, fontWeight: "700", color: colors.ink },
+  timeText: { fontSize: 11, color: colors.inkFaint, marginTop: 2 },
+  categoryTag: {
+    backgroundColor: colors.violetSoft, paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: radii.pill, ...borders.card,
   },
-  scrollContent: {
-    padding: spacing.containerPadding,
-    paddingBottom: 90
-  },
-  mainCard: {
-    padding: spacing.lg,
-    marginBottom: spacing.lg
-  },
-  authorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: spacing.md
-  },
-  authorMeta: {
-    marginLeft: spacing.sm,
-    flex: 1
-  },
-  authorName: {
-    ...typography.badge,
-    fontSize: 14,
-    color: colors.ink
-  },
-  timeText: {
-    ...typography.bodySm,
-    fontSize: 11
-  },
-  categoryBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.borderInk
-  },
-  categoryBadgeText: {
-    ...typography.badge,
-    fontSize: 11,
-    color: colors.violet
-  },
-  postTitle: {
-    ...typography.heading,
-    fontSize: 18,
-    marginBottom: spacing.sm
-  },
-  postBody: {
-    ...typography.bodyLg,
-    lineHeight: 22,
-    marginBottom: spacing.lg
-  },
+  categoryTagText: { fontSize: 11, fontWeight: "700", color: ACCENT },
+  postTitle: { fontSize: 20, fontWeight: "800", color: colors.ink, marginBottom: spacing.sm, lineHeight: 28 },
+  postBody: { fontSize: 15, color: colors.ink, lineHeight: 24, marginBottom: spacing.lg },
   statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
-    borderTopWidth: 1.5,
-    borderTopColor: colors.line,
-    paddingTop: spacing.md
+    flexDirection: "row", alignItems: "center", gap: spacing.lg,
+    borderTopWidth: 1.5, borderTopColor: colors.line, paddingTop: spacing.md,
   },
   upvoteBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.violetSoft,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radii.pill,
-    ...shadows.hardSm
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: colors.violetSoft, paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: radii.pill, ...borders.card,
   },
-  upvoteText: {
-    ...typography.badge,
-    color: colors.violet,
-    fontSize: 12
-  },
-  repliesCountRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5
-  },
-  repliesCountText: {
-    ...typography.bodySm,
-    color: colors.inkSoft,
-    fontWeight: "600"
-  },
-  sectionHeading: {
-    ...typography.heading,
-    fontSize: 15,
-    marginBottom: spacing.md
-  },
-  emptyComments: {
-    padding: spacing.lg,
-    alignItems: "center"
-  },
-  emptyText: {
-    ...typography.body,
-    textAlign: "center"
-  },
-  commentCard: {
-    marginBottom: spacing.sm,
-    padding: spacing.md
-  },
-  commentHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 6
-  },
-  commentMeta: {
-    marginLeft: spacing.sm,
-    flex: 1
-  },
-  commentAuthor: {
-    ...typography.badge,
-    fontSize: 12.5,
-    color: colors.ink
-  },
-  commentTime: {
-    ...typography.bodySm,
-    fontSize: 10
-  },
-  commentBody: {
-    ...typography.body,
-    color: colors.ink
-  },
+  upvoteText: { fontSize: 12, color: ACCENT, fontWeight: "700" },
+  commentsCountRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  commentsCountText: { fontSize: 12, color: colors.inkFaint },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: ACCENT, marginBottom: 4 },
+  emptyCard: { padding: spacing.lg, alignItems: "center" },
+  emptyText: { fontSize: 14, color: colors.inkSoft, textAlign: "center" },
+  commentCard: { padding: spacing.md, marginBottom: 4 },
+  commentHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 },
+  commentAuthor: { fontSize: 13, fontWeight: "700", color: colors.ink },
+  commentTime: { fontSize: 10, color: colors.inkFaint },
+  commentBody: { fontSize: 14, color: colors.ink, lineHeight: 20 },
   composerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.containerPadding,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1.5,
-    borderTopColor: colors.borderInk
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: spacing.containerPadding, paddingVertical: spacing.sm,
+    backgroundColor: colors.surface, borderTopWidth: 1.5, borderTopColor: colors.lineStrong,
   },
   composerInput: {
-    flex: 1,
-    backgroundColor: colors.surface2,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 9,
-    color: colors.ink,
-    fontSize: 14,
-    maxHeight: 80
+    flex: 1, backgroundColor: colors.surfaceInset, borderRadius: radii.pill,
+    ...borders.card, paddingHorizontal: spacing.md, paddingVertical: 10,
+    color: colors.ink, maxHeight: 90, fontSize: 14,
   },
   sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: radii.sm,
-    backgroundColor: colors.violet,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: spacing.sm,
-    ...shadows.hardSm
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: ACCENT, ...borders.card, ...shadows.hardSm,
+    alignItems: "center", justifyContent: "center", marginLeft: spacing.sm,
   },
-  sendBtnDisabled: {
-    opacity: 0.5
-  }
 });

@@ -88,6 +88,13 @@
   --gap: 16px;
   --gap-lg: 24px;
   --gap-xl: 40px;
+
+  --space-xs: 8px;
+  --space-sm: 16px;
+  --space-md: 32px;
+  --space-lg: 48px;
+  --space-xl: 72px;
+
   --shell-max: 1180px;
   --nav-h: 72px;
 
@@ -154,8 +161,11 @@
 }
 
 /* Accent scopes — wrap a module in these to recolour the whole subtree. */
-.accent-violet { --accent: var(--violet); --accent-soft: var(--violet-soft); }
-.accent-coral  { --accent: var(--coral);  --accent-soft: var(--coral-soft); }
-.accent-mint   { --accent: var(--mint);   --accent-soft: var(--mint-soft); }
-.accent-sky    { --accent: var(--sky);    --accent-soft: var(--sky-soft); }
-.accent-sun    { --accent: var(--sun);    --accent-soft: var(--sun-soft); }
+.accent-violet  { --accent: var(--violet);  --accent-soft: var(--violet-soft); }
+.accent-coral   { --accent: var(--coral);   --accent-soft: var(--coral-soft); }
+.accent-mint    { --accent: var(--mint);    --accent-soft: var(--mint-soft); }
+.accent-sky     { --accent: var(--sky);     --accent-soft: var(--sky-soft); }
+.accent-sun     { --accent: var(--sun);     --accent-soft: var(--sun-soft); }
+.accent-amber   { --accent: var(--sun);     --accent-soft: var(--sun-soft); }
+.accent-emerald { --accent: var(--mint);    --accent-soft: var(--mint-soft); }
+.accent-rose    { --accent: var(--rose);    --accent-soft: var(--rose-soft); }

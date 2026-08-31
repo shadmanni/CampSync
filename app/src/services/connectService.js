@@ -26,6 +26,11 @@ export const connectService = {
     return await api.post(`/connect/posts/${postId}/upvote`);
   },
 
+  // Downvote post
+  async downvotePost(postId) {
+    return await api.post(`/connect/posts/${postId}/downvote`);
+  },
+
   // Add comment to post
   async addComment(postId, content, authorName) {
     return await api.post(`/connect/posts/${postId}/comments`, {

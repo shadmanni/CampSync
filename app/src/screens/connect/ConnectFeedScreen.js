@@ -1,401 +1,358 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  RefreshControl,
-  TextInput
+  View, Text, FlatList, TextInput, StyleSheet,
+  TouchableOpacity, Modal, ScrollView, RefreshControl
 } from "react-native";
 import {
-  MessageSquare,
-  ThumbsUp,
-  Search,
-  Plus,
-  Shield,
-  Sparkles,
-  TrendingUp
+  MessageSquare, Plus, Search, ArrowUp, Send, X,
+  Hash, Users, BookOpen, HelpCircle, Megaphone
 } from "lucide-react-native";
-import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
+import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
 import { connectService } from "../../services/connectService";
 import { socketService } from "../../services/socketService";
-import { HeaderBar } from "../../components/common/HeaderBar";
+import { useAuth } from "../../context/AuthContext";
 import { PopCard } from "../../components/common/PopCard";
-import { PopPill } from "../../components/common/PopPill";
 import { PopButton } from "../../components/common/PopButton";
+import { PopPill } from "../../components/common/PopPill";
+import { PopHeader } from "../../components/common/PopHeader";
 import { PopAvatar } from "../../components/common/PopAvatar";
-import { SkeletonLoader } from "../../components/common/SkeletonLoader";
 import { EmptyState } from "../../components/common/EmptyState";
-import { ErrorState } from "../../components/common/ErrorState";
-import { CreatePostModal } from "./CreatePostModal";
+import { SkeletonCard } from "../../components/common/SkeletonLoader";
 
-const CATEGORIES = ["All", "Academic", "General", "Lost & Found"];
+const CATEGORIES = ["All", "Academic", "Lost & Found", "General", "Confessions"];
+const ACCENT = colors.violet;
 
 export const ConnectFeedScreen = ({ navigation }) => {
+  const { user } = useAuth();
   const [posts, setPosts] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
-  const fetchPosts = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    setError(null);
+  const load = useCallback(async () => {
     try {
-      const data = await connectService.getPosts(selectedCategory, searchQuery);
-      setPosts(data || []);
+      const data = await connectService.getPosts(category, search);
+      setPosts(data?.posts || data || []);
     } catch (err) {
-      setError(err.message || "Failed to load discussions.");
+      console.warn("[ConnectFeed] Load error:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedCategory, searchQuery]);
+  }, [category, search]);
 
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  useEffect(() => { load(); }, [load]);
 
+  // Real-time: listen for new posts from other clients
   useEffect(() => {
-    const handleNewPost = (newPost) => {
-      setPosts((prevPosts) => {
-        if (prevPosts.some((p) => p.id === newPost.id)) return prevPosts;
-        if (
-          selectedCategory !== "All" &&
-          selectedCategory.toLowerCase() !== newPost.category?.toLowerCase()
-        ) {
-          return prevPosts;
-        }
-        return [newPost, ...prevPosts];
+    socketService.connect();
+    const handler = (post) => {
+      setPosts(prev => {
+        if (prev.some(p => p.id === post.id)) return prev;
+        return [post, ...prev];
       });
     };
+    socketService.on("connect:new_post", handler);
+    return () => socketService.off("connect:new_post", handler);
+  }, []);
 
-    socketService.on("connect:new_post", handleNewPost);
-    return () => {
-      socketService.off("connect:new_post", handleNewPost);
-    };
-  }, [selectedCategory]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchPosts(true);
-  };
+  const onRefresh = () => { setRefreshing(true); load(); };
 
   const handleUpvote = async (postId) => {
-    const originalPosts = [...posts];
-
-    setPosts((prevPosts) =>
-      prevPosts.map((p) =>
-        p.id === postId ? { ...p, upvotes: (p.upvotes || 0) + 1 } : p
-      )
-    );
-
     try {
-      const result = await connectService.upvotePost(postId);
-      setPosts((prevPosts) =>
-        prevPosts.map((p) =>
-          p.id === postId ? { ...p, upvotes: result.upvotes } : p
-        )
-      );
+      const res = await connectService.upvotePost(postId);
+      setPosts(prev => prev.map(p =>
+        (p.id || p._id) === postId ? { ...p, upvotes: res.upvotes ?? (p.upvotes || 0) + 1 } : p
+      ));
     } catch (err) {
-      setPosts(originalPosts);
-      console.warn("[Connect] Upvote failed, rolled back:", err.message);
+      console.warn("[ConnectFeed] Upvote error:", err);
     }
   };
 
-  const renderPostCard = ({ item }) => {
-    const isAnonymous = item.isAnonymous;
-    const authorName = item.authorName || "Verified Student";
-    const commentsCount = Array.isArray(item.comments) ? item.comments.length : 0;
-
-    return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={() => navigation.navigate("PostDetail", { post: item })}
-      >
-        <PopCard style={styles.postCard}>
-          {/* Card Header */}
-          <View style={styles.cardHeader}>
-            <View style={styles.authorRow}>
-              <PopAvatar name={authorName} anonymous={isAnonymous} size={36} />
-              <View style={styles.authorMeta}>
-                <Text style={styles.authorName}>{authorName}</Text>
-                <Text style={styles.postTime}>{item.createdAt || "Recently"}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.categoryBadge, { backgroundColor: colors.violetSoft }]}>
-              <Text style={styles.categoryBadgeText}>{item.category || "General"}</Text>
-            </View>
-          </View>
-
-          {/* Title & Body */}
-          <Text style={styles.postTitle}>{item.title}</Text>
-          <Text style={styles.postContent} numberOfLines={3}>
-            {item.content}
-          </Text>
-
-          {/* Footer Actions */}
-          <View style={styles.cardFooter}>
-            <TouchableOpacity
-              style={styles.upvoteBtn}
-              onPress={() => handleUpvote(item.id)}
-              activeOpacity={0.7}
-            >
-              <ThumbsUp size={14} color={colors.violet} />
-              <Text style={styles.upvoteCount}>{item.upvotes || 0}</Text>
-            </TouchableOpacity>
-
-            <View style={styles.repliesBtn}>
-              <MessageSquare size={14} color={colors.inkSoft} />
-              <Text style={styles.repliesText}>{commentsCount} replies</Text>
-            </View>
-          </View>
-        </PopCard>
-      </TouchableOpacity>
-    );
+  const handleCreate = async (formData) => {
+    try {
+      const res = await connectService.createPost({
+        ...formData,
+        authorName: user?.name || "Student",
+      });
+      setPosts(prev => [res.post || res, ...prev]);
+      setCreateOpen(false);
+    } catch (err) {
+      console.warn("[ConnectFeed] Create error:", err);
+    }
   };
+
+  const renderPost = ({ item }) => (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={() => navigation.navigate("PostDetail", { post: item })}
+    >
+      <PopCard accent={ACCENT} style={styles.postCard}>
+        {/* Author row */}
+        <View style={styles.authorRow}>
+          <PopAvatar
+            name={item.isAnonymous ? "" : item.authorName}
+            anonymous={item.isAnonymous}
+            size={36}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.authorName}>
+              {item.isAnonymous ? "Anonymous" : item.authorName}
+            </Text>
+            <Text style={styles.postMeta}>
+              {item.category} · {item.createdAt && !isNaN(new Date(item.createdAt).getTime()) ? new Date(item.createdAt).toLocaleDateString() : 'Recently'}
+            </Text>
+          </View>
+          <View style={[styles.categoryBadge, { backgroundColor: colors.violetSoft }]}>
+            <Text style={[styles.categoryBadgeText, { color: ACCENT }]}>{item.category}</Text>
+          </View>
+        </View>
+
+        {/* Content */}
+        <Text style={styles.postTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={styles.postContent} numberOfLines={3}>{item.content}</Text>
+
+        {/* Actions */}
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.upvoteBtn} onPress={() => handleUpvote(item.id || item._id)}>
+            <ArrowUp size={16} color={ACCENT} strokeWidth={2.6} />
+            <Text style={[styles.upvoteCount, { color: ACCENT }]}>{item.upvotes || 0}</Text>
+          </TouchableOpacity>
+          <View style={styles.commentCount}>
+            <MessageSquare size={14} color={colors.inkFaint} strokeWidth={2} />
+            <Text style={styles.commentCountText}>{item.comments?.length || 0}</Text>
+          </View>
+        </View>
+      </PopCard>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
-      <HeaderBar
+      <PopHeader
         title="CampusConnect"
-        subtitle="Verified Student Community Feed"
-        accentColor={colors.violet}
-        onNotificationPress={() => {}}
+        subtitle={`${posts.length} discussion${posts.length !== 1 ? 's' : ''}`}
+        accent={ACCENT}
+        icon={MessageSquare}
       />
 
-      {/* Search Input */}
-      <View style={styles.searchBox}>
-        <Search size={16} color={colors.inkFaint} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search discussions or questions..."
-          placeholderTextColor={colors.inkFaint}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Search size={16} color={colors.inkFaint} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search discussions…"
+            placeholderTextColor={colors.inkFaint}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
       </View>
 
       {/* Category Pills */}
-      <View style={styles.categoryRow}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={CATEGORIES}
-          keyExtractor={(item) => item}
-          renderItem={({ item }) => (
-            <PopPill
-              label={item}
-              active={selectedCategory === item}
-              accentColor={colors.violet}
-              accentSoftColor={colors.violetSoft}
-              onPress={() => setSelectedCategory(item)}
-            />
-          )}
-          contentContainerStyle={styles.categoryList}
-        />
-      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.pillsRow}
+      >
+        {CATEGORIES.map(cat => (
+          <PopPill
+            key={cat}
+            label={cat}
+            active={category === cat}
+            onPress={() => setCategory(cat)}
+            accent={ACCENT}
+          />
+        ))}
+      </ScrollView>
 
-      {/* Feed Content */}
-      {loading && !refreshing ? (
-        <SkeletonLoader count={3} />
-      ) : error ? (
-        <ErrorState
-          title="Could not load discussions"
-          message={error}
-          onRetry={() => fetchPosts()}
-        />
+      {/* Posts */}
+      {loading ? (
+        <View style={{ padding: spacing.containerPadding, gap: 16 }}>
+          <SkeletonCard /><SkeletonCard /><SkeletonCard />
+        </View>
       ) : (
         <FlatList
           data={posts}
-          keyExtractor={(item) => item.id}
-          renderItem={renderPostCard}
+          keyExtractor={item => item._id || item.id}
+          renderItem={renderPost}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.violet}
-              colors={[colors.violet]}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
           ListEmptyComponent={
             <EmptyState
-              icon={<MessageSquare size={32} color={colors.violet} />}
-              title="No discussions found"
-              description={
-                searchQuery
-                  ? `No posts matched "${searchQuery}". Try a different keyword or category.`
-                  : "Be the first student to post a question or announcement!"
-              }
-              actionTitle="Create Discussion"
-              onAction={() => setModalVisible(true)}
-              accentVariant="violet"
+              icon={MessageSquare}
+              title="No discussions yet"
+              hint="Start the conversation — post the first discussion on campus."
             />
           }
         />
       )}
 
-      {/* Floating Action Button */}
+      {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
+        onPress={() => setCreateOpen(true)}
         activeOpacity={0.85}
-        onPress={() => setModalVisible(true)}
       >
-        <Plus size={24} color={colors.surface} />
+        <Plus size={24} color={colors.onAccent} strokeWidth={2.8} />
       </TouchableOpacity>
 
+      {/* Create Post Modal */}
       <CreatePostModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onCreated={(newPost) => {
-          if (
-            selectedCategory === "All" ||
-            selectedCategory.toLowerCase() === newPost.category?.toLowerCase()
-          ) {
-            setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]));
-          }
-        }}
+        visible={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={handleCreate}
       />
     </View>
   );
 };
 
+/* ── Create Post Modal ── */
+function CreatePostModal({ visible, onClose, onSubmit }) {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [category, setCategory] = useState("General");
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!title.trim() || !content.trim()) return;
+    setBusy(true);
+    await onSubmit({ title: title.trim(), content: content.trim(), category, isAnonymous });
+    setBusy(false);
+    setTitle(""); setContent(""); setCategory("General"); setIsAnonymous(false);
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>New Discussion</Text>
+            <TouchableOpacity onPress={onClose}>
+              <X size={22} color={colors.ink} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Discussion title…"
+              placeholderTextColor={colors.inkFaint}
+              value={title}
+              onChangeText={setTitle}
+            />
+            <TextInput
+              style={[styles.modalInput, { height: 120, textAlignVertical: "top" }]}
+              placeholder="Share your thoughts…"
+              placeholderTextColor={colors.inkFaint}
+              value={content}
+              onChangeText={setContent}
+              multiline
+            />
+
+            <Text style={[typography.label, { marginBottom: 8 }]}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {["Academic", "Lost & Found", "General", "Confessions"].map(cat => (
+                  <PopPill
+                    key={cat}
+                    label={cat}
+                    active={category === cat}
+                    onPress={() => setCategory(cat)}
+                    accent={ACCENT}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.anonToggle}
+              onPress={() => setIsAnonymous(!isAnonymous)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, isAnonymous && styles.checkboxActive]}>
+                {isAnonymous && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.anonLabel}>Post anonymously</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          <View style={styles.modalActions}>
+            <PopButton title="Cancel" variant="ghost" onPress={onClose} />
+            <PopButton
+              title={busy ? "Publishing…" : "Publish"}
+              accent={ACCENT}
+              icon={Send}
+              onPress={handleSubmit}
+              loading={busy}
+              disabled={!title.trim() || !content.trim()}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvas
+  container: { flex: 1, backgroundColor: colors.canvas },
+  searchContainer: { paddingHorizontal: spacing.containerPadding, paddingTop: 12 },
+  searchBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: colors.surfaceInset, borderRadius: radii.sm,
+    ...borders.card, paddingHorizontal: 14, height: 44,
   },
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    marginHorizontal: spacing.containerPadding,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-    paddingHorizontal: spacing.md,
-    height: 44,
-    ...shadows.hardSm
-  },
-  searchIcon: {
-    marginRight: spacing.sm
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: "500"
-  },
-  categoryRow: {
-    paddingVertical: spacing.md
-  },
-  categoryList: {
-    paddingHorizontal: spacing.containerPadding
-  },
-  listContent: {
-    paddingHorizontal: spacing.containerPadding,
-    paddingBottom: 90
-  },
-  postCard: {
-    marginBottom: spacing.md
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm
-  },
-  authorRow: {
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  authorMeta: {
-    marginLeft: spacing.sm
-  },
-  authorName: {
-    ...typography.badge,
-    fontSize: 13,
-    color: colors.ink
-  },
-  postTime: {
-    ...typography.bodySm,
-    fontSize: 11
-  },
-  categoryBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.borderInk
-  },
-  categoryBadgeText: {
-    ...typography.badge,
-    fontSize: 11,
-    color: colors.violet
-  },
-  postTitle: {
-    ...typography.heading,
-    fontSize: 16,
-    marginBottom: 4
-  },
-  postContent: {
-    ...typography.body,
-    marginBottom: spacing.md
-  },
-  cardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.lg,
-    borderTopWidth: 1.5,
-    borderTopColor: colors.line,
-    paddingTop: spacing.sm
-  },
+  searchInput: { flex: 1, fontSize: 14, color: colors.ink },
+  pillsRow: { paddingHorizontal: spacing.containerPadding, paddingVertical: 12, gap: 8 },
+  listContent: { paddingHorizontal: spacing.containerPadding, paddingBottom: 100, gap: 14 },
+  postCard: { padding: 18 },
+  authorRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
+  authorName: { fontSize: 14, fontWeight: "700", color: colors.ink },
+  postMeta: { fontSize: 11, color: colors.inkFaint, marginTop: 2 },
+  categoryBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill, ...borders.card },
+  categoryBadgeText: { fontSize: 11, fontWeight: "700" },
+  postTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, marginBottom: 6, lineHeight: 22 },
+  postContent: { fontSize: 14, color: colors.inkSoft, lineHeight: 20, marginBottom: 14 },
+  actionsRow: { flexDirection: "row", alignItems: "center", gap: 20 },
   upvoteBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.violetSoft,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
-    ...shadows.hardSm
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: colors.violetSoft, paddingVertical: 6, paddingHorizontal: 12,
+    borderRadius: radii.pill, ...borders.card,
   },
-  upvoteCount: {
-    ...typography.badge,
-    color: colors.violet,
-    fontSize: 12
-  },
-  repliesBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5
-  },
-  repliesText: {
-    ...typography.bodySm,
-    color: colors.inkSoft,
-    fontWeight: "600"
-  },
+  upvoteCount: { fontSize: 13, fontWeight: "700" },
+  commentCount: { flexDirection: "row", alignItems: "center", gap: 5 },
+  commentCountText: { fontSize: 13, color: colors.inkFaint, fontWeight: "600" },
   fab: {
-    position: "absolute",
-    bottom: 22,
-    right: 18,
-    width: 56,
-    height: 56,
-    borderRadius: radii.md,
-    backgroundColor: colors.violet,
-    borderWidth: 2,
-    borderColor: colors.borderInk,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.hard
-  }
+    position: "absolute", bottom: 24, right: 20,
+    width: 56, height: 56, borderRadius: 16,
+    backgroundColor: ACCENT, ...borders.card, ...shadows.hard,
+    alignItems: "center", justifyContent: "center",
+  },
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: "rgba(23,21,15,0.5)", justifyContent: "flex-end" },
+  modalContent: {
+    backgroundColor: colors.surface, borderTopLeftRadius: radii.xl, borderTopRightRadius: radii.xl,
+    ...borders.card, borderBottomWidth: 0,
+    paddingHorizontal: spacing.containerPadding, paddingTop: 20, paddingBottom: 32,
+    maxHeight: "85%",
+  },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: "800", color: colors.ink },
+  modalInput: {
+    backgroundColor: colors.surfaceInset, borderRadius: radii.sm, ...borders.card,
+    padding: 14, fontSize: 15, color: colors.ink, marginBottom: 14,
+  },
+  anonToggle: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, ...borders.card,
+    backgroundColor: colors.surfaceInset, alignItems: "center", justifyContent: "center",
+  },
+  checkboxActive: { backgroundColor: ACCENT, borderColor: colors.lineStrong },
+  checkmark: { color: colors.onAccent, fontSize: 14, fontWeight: "700" },
+  anonLabel: { fontSize: 14, color: colors.inkSoft, fontWeight: "600" },
+  modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 8 },
 });

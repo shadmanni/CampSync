@@ -45,6 +45,8 @@ before first paint so there is no flash.
 |---|---|---|---|
 | `--violet` | `#6E56F8` | `#8B78FF` | CampusConnect |
 | `--coral` | `#FF6B35` | `#FF854F` | CampusBid |
+| `--amber` | `#F59E0B` | `#FBBF24` | CampusSkills |
+| `--emerald` | `#10B981` | `#34D399` | CampusTasks |
 | `--mint` | `#12B886` | `#2BD9A5` | CampusRide & Events |
 | `--sky` | `#0EA5E9` | `#38BDF8` | CampusNearby |
 | `--sun` | `#FFB703` | `#FFC53D` | warnings, scarcity |
@@ -53,6 +55,12 @@ before first paint so there is no flash.
 `--accent` / `--accent-soft` / `--on-accent` are the indirection layer. **Always
 style against `--accent`, never a named hue**, so a component works in any
 module scope.
+
+### Mobile Touch & Responsive Guidelines
+- `.scroll-x`: Used on category pills and segmented bars for smooth horizontal scrolling without layout breaking.
+- `.card-pop`: Solid 2px ink borders, hard offset drop shadows (`--shadow-hard`), and zero top colored lines for a unified, clean aesthetic across every page.
+- `Modal`: Sits at `z-index: 2000` as a bottom drawer on mobile with safe-area bottom padding.
+- `MobileTabBar`: Fixed thumb-reachable bottom bar at `z-index: 90`.
 
 ### Surfaces & ink
 

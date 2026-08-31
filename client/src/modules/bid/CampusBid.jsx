@@ -149,7 +149,6 @@ export function CampusBid() {
   return (
     <div className="accent-coral stack-lg">
       <SectionHead
-        eyebrow="Module 02 · CampusBid"
         title="The campus marketplace, live"
         subtitle={`${activeCount} open ${activeCount === 1 ? 'auction' : 'auctions'}. Highest bid updates on every device the moment it changes.`}
         action={
@@ -225,7 +224,7 @@ function ItemCard({ item, isWinning, onBid }) {
   return (
     <motion.div layout variants={listItemVariants} initial="hidden" animate="visible" exit="exit">
       <TiltCard
-        className="card-pop is-interactive card-topline"
+        className="card-pop is-interactive"
         style={{ padding: 20, height: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}
         max={5}
       >

@@ -16,7 +16,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { Modal } from '../../components/Modal.jsx';
-import { Avatar, EmptyState, MagneticButton, SectionHead, SkeletonCard } from '../../components/ui.jsx';
+import { Avatar, EmptyState, MagneticButton, SectionHead, SkeletonGrid } from '../../components/ui.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
@@ -101,43 +101,42 @@ export function CampusSkills() {
   };
 
   return (
-    <div className="module-wrap">
+    <div className="accent-amber stack-lg">
       <SectionHead
-        eyebrow="CampusSkills — Peer Exchange"
-        title="Share your expertise or get 1-on-1 peer tutoring."
-        description="Connect with fellow verified students for coding interview prep, design feedback, instrument lessons, and course assignments."
+        title="Share your expertise or get 1-on-1 peer tutoring"
+        subtitle="Connect with fellow verified students for coding interview prep, design feedback, instrument lessons, and course assignments."
         action={
           <MagneticButton
             onClick={() => (user ? setCreateOpen(true) : openAuth())}
             className="btn btn-primary"
           >
-            <Plus size={16} />
+            <Plus size={16} strokeWidth={2.8} />
             <span>Post a Skill</span>
           </MagneticButton>
         }
       />
 
       {/* Controls Bar */}
-      <div className="panel" style={{ padding: '14px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Search Box */}
-          <div style={{ position: 'relative', flex: '1 1 240px' }}>
-            <Search
-              size={15}
-              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}
-            />
-            <input
-              type="text"
-              className="input"
-              placeholder="Search skills, topics, tools (e.g. Python, Figma, DSA)..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              style={{ paddingLeft: '34px', width: '100%' }}
-            />
-          </div>
+      <div className="panel stack" style={{ gap: '14px' }}>
+        {/* Search Box */}
+        <div style={{ position: 'relative', width: '100%' }}>
+          <Search
+            size={17}
+            style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, pointerEvents: 'none' }}
+          />
+          <input
+            type="text"
+            className="input"
+            placeholder="Search skills, topics, tools (e.g. Python, Figma, DSA)..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ paddingLeft: '40px', width: '100%' }}
+          />
+        </div>
 
-          {/* Type Segmented Filter */}
-          <div className="segmented" style={{ flexShrink: 0 }}>
+        {/* Type Segmented Filter */}
+        <div className="scroll-x">
+          <div className="segmented">
             {TYPES.map((t) => (
               <button
                 key={t.id}
@@ -152,50 +151,48 @@ export function CampusSkills() {
         </div>
 
         {/* Category Pills */}
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingTop: '12px' }}>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`pill ${category === c ? 'pill-active' : ''}`}
-              onClick={() => setCategory(c)}
-            >
-              {c}
-            </button>
-          ))}
+        <div className="scroll-x">
+          {CATEGORIES.map((c) => {
+            const isActive = category === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                className={`pill ${isActive ? 'pill-active' : ''}`}
+                onClick={() => setCategory(c)}
+                style={{ flexShrink: 0 }}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Skills Grid */}
       {loading ? (
-        <div className="grid-2">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
+        <SkeletonGrid count={4} height={240} />
       ) : skills.length === 0 ? (
         <EmptyState
           icon={Sparkles}
           title="No skill listings found"
-          description={
+          hint={
             query || category !== 'All' || typeFilter !== 'ALL'
-              ? 'Try changing your filters or search terms.'
+              ? 'Try adjusting your filters or search terms.'
               : 'Be the first student to offer tutoring or request skill help!'
           }
           action={
-            <button
-              type="button"
-              className="btn btn-secondary"
+            <MagneticButton
+              className="btn btn-primary"
               onClick={() => (user ? setCreateOpen(true) : openAuth())}
             >
-              <Plus size={15} />
+              <Plus size={16} strokeWidth={2.8} />
               <span>Post First Skill</span>
-            </button>
+            </MagneticButton>
           }
         />
       ) : (
-        <motion.div layout className="grid-2">
+        <motion.div layout className="grid-cards">
           <AnimatePresence mode="popLayout">
             {skills.map((s) => {
               const isOwner = user && (user.id === s.userId || user.email === s.contact);
@@ -209,61 +206,84 @@ export function CampusSkills() {
                   animate="visible"
                   exit="exit"
                   layout
-                  className="card card-pop"
-                  style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+                  className="card card-pop stack"
+                  style={{
+                    padding: '24px',
+                    gap: '18px',
+                    justifyContent: 'space-between',
+                  }}
                 >
-                  {/* Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Avatar name={s.userName} />
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>{s.userName}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
-                          {s.userDepartment || 'Student'} • {s.userHostel || 'Campus'}
+                  {/* Top: Author + Type Badge + Delete if owner */}
+                  <div className="stack" style={{ gap: '14px' }}>
+                    <div className="row-between" style={{ alignItems: 'flex-start' }}>
+                      <div className="row" style={{ gap: '12px' }}>
+                        <Avatar name={s.userName} size={40} />
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--ink)' }}>
+                            {s.userName}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--ink-faint)', fontWeight: 600 }}>
+                            {s.userDepartment || 'Student'} • {s.userHostel || 'Campus'}
+                          </div>
                         </div>
+                      </div>
+
+                      <div className="row" style={{ gap: '6px' }}>
+                        <span
+                          className="badge"
+                          style={{
+                            background: isOffer ? 'var(--sun-soft)' : 'var(--violet-soft)',
+                            color: isOffer ? 'var(--sun)' : 'var(--violet)',
+                            borderColor: isOffer ? 'var(--sun)' : 'var(--violet)',
+                          }}
+                        >
+                          {isOffer ? '⚡ OFFER' : '🙋 REQUEST'}
+                        </span>
+                        {isOwner && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(s.id)}
+                            className="btn btn-ghost btn-icon"
+                            title="Delete listing"
+                            style={{ color: 'var(--coral)', padding: '6px' }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <span
-                        className="badge"
-                        style={{
-                          background: isOffer ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)',
-                          color: isOffer ? '#fbbf24' : '#818cf8',
-                          borderColor: isOffer ? 'rgba(245, 158, 11, 0.3)' : 'rgba(99, 102, 241, 0.3)',
-                        }}
-                      >
-                        {isOffer ? '⚡ OFFER' : '🙋 REQUEST'}
-                      </span>
-                      {isOwner && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(s.id)}
-                          className="btn-icon"
-                          title="Delete listing"
-                          style={{ color: 'var(--coral)' }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                    {/* Title & Description */}
+                    <div className="stack" style={{ gap: '8px' }}>
+                      <h3 style={{ fontSize: '1.12rem', fontWeight: 800, lineHeight: 1.3, color: 'var(--ink)' }}>
+                        {s.title}
+                      </h3>
+                      <p style={{ fontSize: '0.9rem', color: 'var(--ink-soft)', lineHeight: 1.55 }}>
+                        {s.description}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Title & Description */}
-                  <div>
-                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '6px', lineHeight: 1.3 }}>
-                      {s.title}
-                    </h3>
-                    <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                      {s.description}
-                    </p>
-                  </div>
-
-                  {/* Pricing & Category Tags */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-glass)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* Footer info: Category, Pricing, Contact CTA */}
+                  <div
+                    className="row-between wrap"
+                    style={{
+                      paddingTop: '14px',
+                      borderTop: '1.5px solid var(--line)',
+                      gap: '12px',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div className="row wrap" style={{ gap: '8px' }}>
                       <span className="badge badge-secondary">{s.category}</span>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-amber)' }}>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.88rem',
+                          fontWeight: 800,
+                          color: 'var(--accent)',
+                        }}
+                      >
                         {s.pricing || 'Free Exchange'}
                       </span>
                     </div>
@@ -272,10 +292,9 @@ export function CampusSkills() {
                       type="button"
                       onClick={() => handleCopyContact(s)}
                       className="btn btn-secondary btn-sm"
-                      style={{ gap: '6px' }}
                     >
-                      {copiedId === s.id ? <Check size={13} color="#10b981" /> : <Copy size={13} />}
-                      <span>{copiedId === s.id ? 'Copied' : 'Contact Student'}</span>
+                      {copiedId === s.id ? <Check size={14} color="var(--mint)" strokeWidth={2.6} /> : <Copy size={14} />}
+                      <span>{copiedId === s.id ? 'Copied!' : 'Contact Student'}</span>
                     </button>
                   </div>
                 </motion.article>

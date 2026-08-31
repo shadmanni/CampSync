@@ -143,9 +143,9 @@ export function SectionHead({ eyebrow, title, subtitle, action }) {
   return (
     <div
       className="row-between wrap"
-      style={{ alignItems: 'flex-end', gap: 'var(--gap)', marginBottom: 4 }}
+      style={{ alignItems: 'flex-start', gap: 'var(--gap)', marginBottom: 8 }}
     >
-      <div style={{ maxWidth: '54ch' }}>
+      <div style={{ maxWidth: '54ch', flex: '1 1 260px' }}>
         {eyebrow && <p className="t-eyebrow" style={{ marginBottom: 8 }}>{eyebrow}</p>}
         <h2 className="t-title">{title}</h2>
         {subtitle && (
@@ -154,7 +154,7 @@ export function SectionHead({ eyebrow, title, subtitle, action }) {
           </p>
         )}
       </div>
-      {action}
+      {action && <div className="section-head-action">{action}</div>}
     </div>
   );
 }

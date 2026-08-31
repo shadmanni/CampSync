@@ -128,7 +128,6 @@ export function CampusConnect() {
   return (
     <div className="accent-violet stack-lg">
       <SectionHead
-        eyebrow="Module 01 · CampusConnect"
         title="What your campus is talking about"
         subtitle="Every account here passed college-email verification. Post under your name, or anonymously when it matters."
         action={
@@ -143,8 +142,38 @@ export function CampusConnect() {
       />
 
       {/* ---- Filters ---- */}
-      <div className="row wrap" style={{ gap: 10, justifyContent: 'space-between' }}>
-        <div className="row" style={{ gap: 7, overflowX: 'auto', paddingBottom: 2 }}>
+      <div className="stack" style={{ gap: 12 }}>
+        <label
+          className="row"
+          style={{
+            gap: 10,
+            padding: '0 16px',
+            borderRadius: 'var(--r-pill)',
+            border: '2px solid var(--line-strong)',
+            background: 'var(--surface)',
+            width: '100%',
+            boxShadow: 'var(--shadow-hard-sm)',
+          }}
+        >
+          <Search size={16} className="t-faint" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search discussions, topics, keywords..."
+            aria-label="Search posts"
+            style={{
+              border: 0,
+              outline: 'none',
+              background: 'none',
+              padding: '12px 0',
+              width: '100%',
+              fontSize: 'var(--t-small)',
+              color: 'var(--ink)',
+            }}
+          />
+        </label>
+
+        <div className="scroll-x">
           {CATEGORIES.map((c) => {
             const isActive = category === c;
             return (
@@ -154,7 +183,7 @@ export function CampusConnect() {
                 className="chip"
                 data-active={isActive}
                 onClick={() => setCategory(c)}
-                style={{ position: 'relative' }}
+                style={{ position: 'relative', flexShrink: 0 }}
               >
                 {isActive && (
                   <motion.span
@@ -173,34 +202,6 @@ export function CampusConnect() {
             );
           })}
         </div>
-
-        <label
-          className="row"
-          style={{
-            gap: 8,
-            padding: '0 14px',
-            borderRadius: 'var(--r-pill)',
-            border: 'var(--line-width) solid var(--line)',
-            background: 'var(--surface)',
-            minWidth: 210,
-          }}
-        >
-          <Search size={15} className="t-faint" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search the feed"
-            aria-label="Search posts"
-            style={{
-              border: 0,
-              outline: 'none',
-              background: 'none',
-              padding: '10px 0',
-              width: '100%',
-              fontSize: 'var(--t-small)',
-            }}
-          />
-        </label>
       </div>
 
       {/* ---- Feed ---- */}
@@ -276,10 +277,10 @@ function PostCard({ post, hasVoted, onUpvote, onOpenThread }) {
       className="card is-interactive"
       whileHover={{ y: -2 }}
       transition={spring.snappy}
-      style={{ padding: 20, display: 'flex', gap: 16 }}
+      style={{ padding: 'clamp(14px, 3vw, 20px)', display: 'flex', gap: 'clamp(10px, 2.5vw, 16px)' }}
     >
       {/* Vote rail */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
         <motion.button
           type="button"
           onClick={onUpvote}
@@ -318,15 +319,15 @@ function PostCard({ post, hasVoted, onUpvote, onOpenThread }) {
 
       {/* Body */}
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div className="row-between" style={{ marginBottom: 10, gap: 10 }}>
-          <div className="row" style={{ gap: 10, minWidth: 0 }}>
+        <div className="row-between wrap" style={{ marginBottom: 10, gap: 8, alignItems: 'flex-start' }}>
+          <div className="row" style={{ gap: 10, minWidth: 0, flex: '1 1 auto' }}>
             <Avatar name={post.authorName} anonymous={post.isAnonymous} size={32} />
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <p
                 className="row"
                 style={{ gap: 6, fontSize: 'var(--t-small)', fontWeight: 700, lineHeight: 1.2 }}
               >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
                   {post.isAnonymous ? 'Anonymous student' : post.authorName}
                 </span>
                 {post.isAnonymous && (
@@ -340,7 +341,7 @@ function PostCard({ post, hasVoted, onUpvote, onOpenThread }) {
             </div>
           </div>
 
-          <span className="badge">{post.category}</span>
+          <span className="badge" style={{ flexShrink: 0 }}>{post.category}</span>
         </div>
 
         <button

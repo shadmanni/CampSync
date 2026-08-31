@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform
+  View, Text, TextInput, StyleSheet,
+  TouchableOpacity, KeyboardAvoidingView, Platform
 } from "react-native";
 import { KeyRound, ArrowLeft, RotateCcw, Check, Sparkles } from "lucide-react-native";
-import { colors, radii, shadows, spacing, typography } from "../../theme/theme";
+import { colors, borders, radii, spacing, typography } from "../../theme/theme";
 import { useAuth } from "../../context/AuthContext";
 import { authService } from "../../services/authService";
 import { PopCard } from "../../components/common/PopCard";
@@ -66,27 +61,28 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
+      {/* Header */}
       <View style={styles.headerRow}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <ArrowLeft size={18} color={colors.ink} />
+          <ArrowLeft size={20} color={colors.violet} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Verification Code</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.content}>
-        <PopCard style={styles.card}>
-          <View style={styles.iconCircle}>
-            <KeyRound size={26} color={colors.violet} />
+        <PopCard accent={colors.violet} style={styles.card}>
+          <View style={styles.iconWrapper}>
+            <KeyRound size={28} color={colors.violet} />
           </View>
 
           <Text style={styles.title}>Enter 6-Digit Code</Text>
           <Text style={styles.subtitle}>
-            We've sent an access OTP code to:{"\n"}
+            We've sent a 6-digit OTP code to:{"\n"}
             <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
 
@@ -97,12 +93,12 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
             </View>
           ) : null}
 
-          {/* 6-Digit OTP Box */}
+          {/* OTP Input */}
           <TextInput
             style={styles.otpInput}
             value={otp}
-            onChangeText={(t) => {
-              setOtp(t.replace(/[^0-9]/g, "").slice(0, 6));
+            onChangeText={(text) => {
+              setOtp(text.replace(/[^0-9]/g, "").slice(0, 6));
               setErrorMsg("");
             }}
             keyboardType="number-pad"
@@ -117,12 +113,13 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
             title="Verify & Enter Campus"
             onPress={handleVerifyOtp}
             loading={loading}
-            variant="violet"
-            size="lg"
-            icon={<Check size={18} color={colors.surface} />}
-            style={styles.verifyBtn}
+            accent={colors.violet}
+            icon={Check}
+            block
+            style={{ marginBottom: spacing.lg }}
           />
 
+          {/* Resend */}
           <View style={styles.resendRow}>
             {timer > 0 ? (
               <Text style={styles.timerText}>
@@ -134,8 +131,8 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
                 style={styles.resendBtn}
                 activeOpacity={0.7}
               >
-                <RotateCcw size={13} color={colors.coral} />
-                <Text style={styles.resendText}>Resend Code</Text>
+                <RotateCcw size={14} color={colors.coral} />
+                <Text style={styles.resendText}>Resend OTP Code</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -148,7 +145,7 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.canvas
+    backgroundColor: colors.canvas,
   },
   headerRow: {
     flexDirection: "row",
@@ -156,122 +153,112 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: spacing.containerPadding,
     paddingTop: 50,
-    paddingBottom: spacing.sm
+    paddingBottom: spacing.sm,
   },
   backBtn: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: radii.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
+    backgroundColor: colors.violetSoft,
+    ...borders.card,
     alignItems: "center",
     justifyContent: "center",
-    ...shadows.hardSm
   },
   headerTitle: {
-    ...typography.heading,
-    color: colors.ink
+    ...typography.h3,
+    color: colors.violet,
   },
   content: {
     flex: 1,
     justifyContent: "center",
-    padding: spacing.containerPadding
+    padding: spacing.containerPadding,
   },
   card: {
     padding: spacing.xl,
-    alignItems: "center"
+    alignItems: "center",
   },
-  iconCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+  iconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.violetSoft,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md,
-    ...shadows.hardSm
   },
   title: {
-    ...typography.title,
-    fontSize: 22,
+    ...typography.h2,
+    color: colors.violet,
     textAlign: "center",
-    marginBottom: 4
+    marginBottom: spacing.xs,
   },
   subtitle: {
     ...typography.body,
     textAlign: "center",
-    lineHeight: 20,
-    marginBottom: spacing.md
+    lineHeight: 22,
+    marginBottom: spacing.lg,
   },
   emailHighlight: {
-    color: colors.ink,
-    fontWeight: "800"
+    color: colors.violet,
+    fontWeight: "700",
   },
   demoNoticeBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     backgroundColor: colors.violetSoft,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
+    ...borders.card,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     marginBottom: spacing.lg,
-    width: "100%"
+    width: "100%",
   },
   demoNoticeText: {
-    ...typography.bodySm,
+    fontSize: 12,
     color: colors.violet,
-    fontWeight: "700",
-    flex: 1
+    flex: 1,
+    fontWeight: "600",
   },
   otpInput: {
     width: "100%",
     height: 58,
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.borderInk,
+    backgroundColor: colors.surfaceInset,
+    borderRadius: radii.sm,
+    ...borders.card,
     textAlign: "center",
-    fontSize: 26,
-    letterSpacing: 8,
-    fontWeight: "800",
-    color: colors.ink,
+    fontSize: 28,
+    letterSpacing: 10,
+    fontWeight: "700",
+    color: colors.violet,
     marginBottom: spacing.md,
-    ...shadows.hardSm
   },
   errorText: {
-    ...typography.bodySm,
+    fontSize: 12,
     color: colors.rose,
-    fontWeight: "700",
-    marginBottom: spacing.md
-  },
-  verifyBtn: {
-    width: "100%",
-    marginBottom: spacing.lg
+    marginBottom: spacing.md,
+    fontWeight: "600",
+    textAlign: "center",
   },
   resendRow: {
-    alignItems: "center"
+    alignItems: "center",
   },
   timerText: {
-    ...typography.bodySm,
-    color: colors.inkSoft
+    fontSize: 12,
+    color: colors.inkFaint,
   },
   timerCount: {
     color: colors.coral,
-    fontWeight: "800"
+    fontWeight: "700",
   },
   resendBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5
+    gap: 6,
   },
   resendText: {
-    ...typography.badge,
-    color: colors.coral
-  }
+    fontSize: 12,
+    color: colors.coral,
+    fontWeight: "700",
+  },
 });
