@@ -4,7 +4,7 @@ import { dbAdapter } from "../store/dbAdapter.js";
 const JWT_SECRET = process.env.JWT_SECRET || "campussync_super_secret_jwt_key_2026";
 
 // College email domains allowed
-const ALLOWED_CAMPUS_DOMAINS = ["@college.edu", "@campus.ac.in", "@university.edu", "@iit.ac.in", "@nit.ac.in", "@bits.ac.in"];
+const ALLOWED_CAMPUS_DOMAINS = ["@learner.manipal.edu", "@manipal.edu"];
 
 /**
  * POST /api/auth/request-otp
@@ -29,12 +29,12 @@ export const requestOtp = async (req, res, next) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const isCollegeDomain = ALLOWED_CAMPUS_DOMAINS.some(domain => cleanEmail.endsWith(domain));
+    const isCollegeDomain = ALLOWED_CAMPUS_DOMAINS.some(domain => cleanEmail.endsWith(domain)) || cleanEmail.includes("manipal.edu");
 
     if (!isCollegeDomain) {
       return res.status(400).json({
         success: false,
-        error: "Access restricted. Please use your official college email (e.g. yourname@college.edu)."
+        error: "Access restricted. Please use your official Manipal email address (e.g. yourname@learner.manipal.edu)."
       });
     }
 

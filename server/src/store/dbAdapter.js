@@ -18,13 +18,15 @@ class DatabaseAdapter {
   }
 
   async init() {
-    const databaseUrl = process.env.DATABASE_URL;
+    let databaseUrl = process.env.DATABASE_URL;
     if (databaseUrl && !databaseUrl.includes("mock")) {
       try {
+        databaseUrl = databaseUrl.replace(/:\[([^\]]+)\]@/, ":$1@");
         console.log("[DB] Connecting to PostgreSQL database...");
+        const isRemotePg = databaseUrl.includes("supabase") || databaseUrl.includes("pooler") || databaseUrl.includes("render") || databaseUrl.includes("sslmode=require") || process.env.NODE_ENV === "production";
         this.pool = new pg.Pool({
           connectionString: databaseUrl,
-          ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false
+          ssl: isRemotePg ? { rejectUnauthorized: false } : false
         });
 
         // Test connection
@@ -138,9 +140,14 @@ class DatabaseAdapter {
      ========================================================================== */
 
   checkIpRateLimit(ip) {
+    // Bypass IP rate limit in local development / localhost
+    if (process.env.NODE_ENV !== "production" || ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1" || ip === "unknown-ip") {
+      return { allowed: true };
+    }
+
     const now = Date.now();
     const windowMs = 15 * 60 * 1000; // 15 min window
-    const maxRequests = 10;
+    const maxRequests = 20;
 
     const record = this.ipRateLimits.get(ip) || { count: 0, resetTime: now + windowMs };
     if (now > record.resetTime) {
@@ -159,7 +166,8 @@ class DatabaseAdapter {
 
   async recordOtpRequest(email, otpCode) {
     const now = Date.now();
-    const cooldownMs = 60 * 1000; // 60 seconds between resends
+    // 2s cooldown in dev mode, 60s in production
+    const cooldownMs = process.env.NODE_ENV === "production" ? 60 * 1000 : 2 * 1000;
     const expiryMs = 10 * 60 * 1000; // 10 min OTP lifespan
     const maxAttempts = 5;
 

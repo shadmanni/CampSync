@@ -64,6 +64,7 @@ async function ensureServerRunning() {
     // Server is not running, import and start in-process
     console.log("⚡ Starting CampusSync Server in-process for test execution...");
     const { app, server } = await import("./src/server.js");
+    await new Promise(r => setTimeout(r, 1500));
     return server;
   }
   return null;
@@ -99,35 +100,35 @@ async function runTests() {
   // Valid college email should succeed
   const goodAuth = await request("/api/auth/request-otp", {
     method: "POST",
-    body: { email: "anshuman.student@college.edu" }
+    body: { email: "anshuman.student@learner.manipal.edu" }
   });
-  assert(goodAuth.status === 200, "Valid @college.edu email accepted with HTTP 200");
+  assert(goodAuth.status === 200, "Valid @learner.manipal.edu email accepted with HTTP 200");
 
   // Immediate resend should hit rate limit cooldown (60s)
   const spamAuth = await request("/api/auth/request-otp", {
     method: "POST",
-    body: { email: "anshuman.student@college.edu" }
+    body: { email: "anshuman.student@learner.manipal.edu" }
   });
   assert(spamAuth.status === 429, "Immediate OTP resend rejected by cooldown rate-limiter (HTTP 429)");
 
   // Invalid OTP check
   const wrongOtp = await request("/api/auth/verify-otp", {
     method: "POST",
-    body: { email: "anshuman.student@college.edu", otp: "000000" }
+    body: { email: "anshuman.student@learner.manipal.edu", otp: "000000" }
   });
   assert(wrongOtp.status === 400, "Incorrect OTP rejected with error warning");
 
   // Valid OTP verification
   const verifyRes = await request("/api/auth/verify-otp", {
     method: "POST",
-    body: { email: "anshuman.student@college.edu", otp: "123456" }
+    body: { email: "anshuman.student@learner.manipal.edu", otp: "123456" }
   });
   assert(verifyRes.status === 200, "Correct OTP issued valid JWT token");
   jwtToken = verifyRes.data.token;
   assert(Boolean(jwtToken), "JWT Token extracted successfully");
 
   const meRes = await request("/api/auth/me");
-  assert(meRes.status === 200 && meRes.data.user.email === "anshuman.student@college.edu", "GET /api/auth/me returns authenticated user");
+  assert(meRes.status === 200 && meRes.data.user.email === "anshuman.student@learner.manipal.edu", "GET /api/auth/me returns authenticated user");
 
   // 3. CAMPUSCONNECT (COMMUNITY FEED, UPVOTES, COMMENTS)
   console.log("\n[3] Testing CampusConnect Module (Discussions, Threading, Voting)");

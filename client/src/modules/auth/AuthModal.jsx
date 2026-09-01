@@ -7,7 +7,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
 import { spring } from '../../lib/motion.js';
 
-const ALLOWED = ['@college.edu', '@campus.ac.in', '@university.edu'];
+const ALLOWED = ['@learner.manipal.edu'];
 const OTP_LENGTH = 6;
 
 /**
@@ -38,7 +38,7 @@ export function AuthModal() {
     }
   }, [authOpen]);
 
-  const domainOk = ALLOWED.some((d) => email.trim().toLowerCase().endsWith(d));
+  const domainOk = ALLOWED.some((d) => email.trim().toLowerCase().endsWith(d)) || email.trim().toLowerCase().includes('manipal.edu');
 
   async function sendOtp(e) {
     e?.preventDefault();
@@ -145,7 +145,7 @@ export function AuthModal() {
                   className="input"
                   type="email"
                   autoComplete="email"
-                  placeholder="you@college.edu"
+                  placeholder="you@learner.manipal.edu"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -295,5 +295,3 @@ function ErrorLine({ message }) {
     </AnimatePresence>
   );
 }
-
-export const ARIA_ALLOWED_DOMAINS = ALLOWED;

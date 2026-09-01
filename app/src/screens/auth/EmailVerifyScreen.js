@@ -10,7 +10,7 @@ import { PopCard } from "../../components/common/PopCard";
 import { PopButton } from "../../components/common/PopButton";
 
 export const EmailVerifyScreen = ({ navigation }) => {
-  const [email, setEmail] = useState("alex.tech@college.edu");
+  const [email, setEmail] = useState("alex.tech@learner.manipal.edu");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -60,7 +60,7 @@ export const EmailVerifyScreen = ({ navigation }) => {
               <Mail size={18} color={colors.violet} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="yourname@college.edu"
+                placeholder="yourname@learner.manipal.edu"
                 placeholderTextColor={colors.inkFaint}
                 value={email}
                 onChangeText={(text) => {
@@ -77,7 +77,7 @@ export const EmailVerifyScreen = ({ navigation }) => {
 
             <View style={styles.domainsRow}>
               <CheckCircle2 size={13} color={colors.mint} />
-              <Text style={styles.domainHint}>Supported: @college.edu, @campus.ac.in, @university.edu</Text>
+              <Text style={styles.domainHint}>Supported: @learner.manipal.edu</Text>
             </View>
 
             <PopButton
