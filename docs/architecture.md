@@ -52,7 +52,7 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 | Component | Technology | Hosting Provider | Deployment & Operational Details |
 |---|---|---|---|
 | **Backend API & WebSockets** | Node.js (v18+) + Express + Socket.io | **Render.com (Web Service)** | Persistent process support, automatic HTTPS/WSS, auto-deploy from `CampSync.git` repo. |
-| **Shared Database** | PostgreSQL 15+ | **Render Managed PostgreSQL (`campsync_db`)** | Hosted in same Render region, private internal network URL (`DATABASE_URL`), persistent storage, automatic schema migrations. |
+| **Shared Database** | PostgreSQL 15+ | **Supabase / Render Managed PostgreSQL** | Cloud PostgreSQL with Connection Pooler support (AWS AP-South-1), SSL enforcement (`rejectUnauthorized: false`), automatic schema migrations via `setup-supabase.js`. |
 | **Website (Laptop)** | React + Vite Single Page App | **Vercel** | Global Edge CDN, automated preview/production deployments on push. |
 | **Mobile App (Android)** | React Native (Expo) | **Expo Go (Dev) & Expo EAS (Cloud APK Build)** | Zero Android Studio required; live reload via Expo Go, cloud `.apk` builds via EAS. |
 
@@ -104,7 +104,7 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 ## 4. API Endpoint Contracts
 
 ### Auth & Campus Verification
-- `POST /api/auth/request-otp` — `{ email }` → Send 6-digit OTP code to college email (rate-limited, 60s cooldown).
+- `POST /api/auth/request-otp` — `{ email }` → Send 6-digit OTP code to official college email (`@learner.manipal.edu`, `@manipal.edu`) (rate-limited, 60s cooldown in prod / 2s in dev).
 - `POST /api/auth/verify-otp` — `{ email, otp }` → Returns JWT auth token & user profile (5-attempt lockout).
 - `GET /api/auth/me` — Requires Bearer Token → Returns authenticated user object.
 

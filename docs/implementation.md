@@ -15,9 +15,9 @@ CampusSync is engineered as a **dual-platform system with a single shared core**
 ---
 
 ## 2. Directory Layout Blueprint
-
 ```
 CPI/
+├── package.json                # Root monorepo orchestration (concurrent dev, db:setup)
 ├── docs/                       # Project documentation suite
 │   ├── memory.md               # Project memory, decisions & state
 │   ├── design.md               # Visual design tokens & dual UI specs
@@ -44,12 +44,13 @@ CPI/
 │   └── package.json
 └── server/                     # Backend API & WebSocket Engine (Node.js/Express)
     ├── src/
-    │   ├── controllers/        # auth, connect, bid, ride, nearby
+    │   ├── controllers/        # auth, connect, bid, ride, nearby, skills, tasks
     │   ├── middleware/         # authMiddleware.js, errorHandler.js
-    │   ├── routes/             # api.js, authRoutes, connectRoutes, bidRoutes, rideRoutes, nearbyRoutes
+    │   ├── routes/             # api.js, authRoutes, connectRoutes, bidRoutes, rideRoutes, nearbyRoutes, skillRoutes, taskRoutes
     │   ├── sockets/            # socketHandler.js
     │   ├── store/              # dbAdapter.js, schema.sql, mockDb.js
     │   └── server.js
+    ├── setup-supabase.js       # Automated Supabase schema creation & table setup script
     ├── test-api.js             # Automated integration & concurrency test suite
     ├── package.json
     └── .env.example
@@ -61,7 +62,7 @@ CPI/
 
 ### Phase 1 — Setup & Dual-Platform Architecture (Week 1)
 - [x] Create project workspace layout (`client/`, `server/`, `docs/`, `app/`).
-- [x] Formulate architecture contracts for Render server, Render PostgreSQL DB, and unified REST/Socket APIs.
+- [x] Formulate architecture contracts for Render server, Render/Supabase PostgreSQL DB, and unified REST/Socket APIs.
 - [x] Scaffold React + Vite client app (`client/`) with design tokens.
 - [x] Scaffold Node.js + Express backend (`server/`) with mock data store & JWT auth.
 - [x] Scaffold React Native / Expo app (`app/`) with matching theme tokens and navigation.
@@ -74,62 +75,74 @@ CPI/
 - [x] **Web Frontend (Members 3 & 4)**: Build CampusConnect, CampusBid, CampusSkills, CampusTasks, CampusRide, and CampusNearby views.
 - [x] **Mobile App (Member 7)**: Build matching mobile screens with bottom navigation, pull-to-refresh, touch scroll chips, and slide-up drawers.
 
-### Phase 3 — Render Cloud Hosting & Mobile Synchronization (Week 4)
+### Phase 3 — Cloud Hosting & Mobile Synchronization (Week 4)
 - [x] **Member 7 (DevOps/Integration)**:
-  - Database schema & adapters ready for Render Managed PostgreSQL database instance (`campsync_db`).
-  - Deployable Node.js web service for `server/` with internal `DATABASE_URL` wired.
-  - Web client configured on port `3000` with proxy and `--host` for LAN preview.
-  - Mobile client configured on Expo (port `8081`) with local Web fallback and Ngrok tunnel support.
+  - Database schema & adapters configured for Supabase / Render Managed PostgreSQL database.
+  - Automated database setup via `npm run db:setup` (`setup-supabase.js`).
+  - Deployable Node.js web service for `server/` with `DATABASE_URL` wired.
+  - Web client configured with proxy and responsive desktop layouts.
+  - Mobile client configured on Expo with local Web fallback and SecureStore JWT persistence.
 - [x] Verify both Web and Mobile connect to the same backend and sync in real time.
 
 ### Phase 4 — Testing, Security & Presentation (Weeks 5–6)
 - [x] **Member 8 (QA & Security)**: Execute cross-platform testing (actions on Web immediately reflect on Mobile app in real-time).
-- [x] Security audit: College email OTP verification enforcement and rate limiting.
+- [x] Security audit: College email OTP verification enforcement (`@learner.manipal.edu`, `@manipal.edu`) and rate limiting.
 - [x] Mobile UI optimization: Single-column responsive layouts, horizontal touch-scrolling pills, and safe-area bottom modals.
 
 ---
 
 ## 4. Local Development & Run Commands
 
-### A. Web Client (Laptop)
+### A. One-Command Full Stack (Recommended)
+From the workspace root (`CPI/`):
 ```bash
-cd client
-npm install
+# Run both Server & Client concurrently:
 npm run dev
-# Running on http://localhost:5173
+
+# Provision/Migrate Supabase PostgreSQL Database:
+npm run db:setup
 ```
 
-### B. Backend Server
+### B. Individual Services
 ```bash
-cd server
-npm install
-npm run dev
-# Running on http://localhost:5000 (API & Socket.io)
+# Web Client only:
+npm run client          # or: cd client && npm run dev
+
+# Backend Server only:
+npm run server          # or: cd server && npm start
+
+# Expo Mobile App:
+npm run app             # or: cd app && npm start
 
 # Run automated integration & race-condition test suite:
-node test-api.js
-```
-
-### C. Android Mobile App (Expo — No Android Studio Required)
-```bash
-cd app
-npx create-expo-app@latest ./ --template blank
-npm install socket.io-client @react-navigation/native @react-navigation/bottom-tabs expo-secure-store lucide-react-native
-npx expo start
-# Scan QR code using Expo Go app on your Android phone!
+node server/test-api.js
 ```
 
 ---
 
-## 5. Cloud Hosting & Deployment Guide
+## 5. Cloud Hosting & Database Guide
 
-### 1. Render Database Setup (Render Managed PostgreSQL)
+### 1. Supabase PostgreSQL Database Setup (Recommended)
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard) and create a project.
+2. In Project Settings → **Database** → **Connection String**, copy the **Transaction Pooler** or **Direct** connection URL.
+3. In `server/.env`, set:
+   ```env
+   DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
+   ```
+4. Run the automated schema provisioning script:
+   ```bash
+   npm run db:setup
+   ```
+   *This automatically verifies connectivity, handles remote SSL, and provisions all 11 tables and indices.*
+
+### 2. Render Database Setup (Alternative: Render Managed PostgreSQL)
 1. Go to [Render Dashboard](https://dashboard.render.com).
 2. Click **New +** → **PostgreSQL**.
 3. Name: `campsync-db`, Database: `campsync_db`, User: `campsync_user`.
 4. Region: Choose closest region (e.g., Singapore or Frankfurt).
 5. Click **Create Database**.
-6. Copy the **Internal Database URL** (e.g., `postgres://campsync_user:xxx@dpg-xxx-a:5432/campsync_db`).
+6. Copy the **Internal Database URL** and set `DATABASE_URL` in `server/.env`.
+7. Run `npm run db:setup`.
 
 ### 2. Render Server Setup (Node.js Web Service)
 1. In Render Dashboard, click **New +** → **Web Service**.
