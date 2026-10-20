@@ -16,6 +16,7 @@ import { Avatar, EmptyState, MagneticButton, SectionHead, SkeletonCard } from '.
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
+import { prependUniqueById } from '../../lib/collections.js';
 import { useSocketEvent } from '../../lib/socket.js';
 import { listItemVariants, spring } from '../../lib/motion.js';
 import { pluralize, timeAgo } from '../../lib/format.js';
@@ -57,9 +58,8 @@ export function CampusConnect() {
   const onRemotePost = useCallback(
     (post) => {
       setPosts((prev) => {
-        if (prev.some((p) => p.id === post.id)) return prev;
         if (category !== 'All' && post.category !== category) return prev;
-        return [post, ...prev];
+        return prependUniqueById(prev, post);
       });
       toast.live('New post in the feed', { detail: post.title });
     },
@@ -108,7 +108,7 @@ export function CampusConnect() {
 
   async function handleCreate(payload) {
     const created = await api.createPost({ ...payload, authorName: displayName });
-    setPosts((prev) => [created, ...prev]);
+    setPosts((prev) => prependUniqueById(prev, created));
     setComposeOpen(false);
     toast.success('Posted to CampusConnect', {
       detail: payload.isAnonymous ? 'Your name is hidden on this one.' : undefined,

@@ -9,6 +9,7 @@ import {
 import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
 import { bidService } from "../../services/bidService";
 import { socketService } from "../../services/socketService";
+import { prependUniqueById } from "../../utils/collections";
 import { useAuth } from "../../context/AuthContext";
 import { PopCard } from "../../components/common/PopCard";
 import { PopButton } from "../../components/common/PopButton";
@@ -106,7 +107,7 @@ export const BidBrowseScreen = () => {
   const handleList = async (payload) => {
     try {
       const created = await bidService.createItem(payload);
-      setItems(prev => [created, ...prev]);
+      setItems(prev => prependUniqueById(prev, created));
       setListOpen(false);
     } catch (err) {
       console.warn("[BidBrowse] List error:", err);

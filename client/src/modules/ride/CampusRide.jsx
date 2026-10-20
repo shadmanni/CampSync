@@ -25,6 +25,7 @@ import {
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
+import { prependUniqueById } from '../../lib/collections.js';
 import { useSocketEvent } from '../../lib/socket.js';
 import { listItemVariants, spring } from '../../lib/motion.js';
 import { money, pluralize } from '../../lib/format.js';
@@ -126,7 +127,7 @@ export function CampusRide() {
 
   async function handlePostRide(payload) {
     const created = await api.createRide(payload);
-    setRides((prev) => [created, ...prev]);
+    setRides((prev) => prependUniqueById(prev, created));
     setPostOpen(false);
     toast.success('Your ride is listed', { detail: 'Verified students can claim seats now.' });
   }

@@ -10,6 +10,7 @@ import {
 import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
 import { connectService } from "../../services/connectService";
 import { socketService } from "../../services/socketService";
+import { prependUniqueById } from "../../utils/collections";
 import { useAuth } from "../../context/AuthContext";
 import { PopCard } from "../../components/common/PopCard";
 import { PopButton } from "../../components/common/PopButton";
@@ -49,10 +50,7 @@ export const ConnectFeedScreen = ({ navigation }) => {
   useEffect(() => {
     socketService.connect();
     const handler = (post) => {
-      setPosts(prev => {
-        if (prev.some(p => p.id === post.id)) return prev;
-        return [post, ...prev];
-      });
+      setPosts(prev => prependUniqueById(prev, post));
     };
     socketService.on("connect:new_post", handler);
     return () => socketService.off("connect:new_post", handler);
@@ -77,7 +75,7 @@ export const ConnectFeedScreen = ({ navigation }) => {
         ...formData,
         authorName: user?.name || "Student",
       });
-      setPosts(prev => [res.post || res, ...prev]);
+      setPosts(prev => prependUniqueById(prev, res.post || res));
       setCreateOpen(false);
     } catch (err) {
       console.warn("[ConnectFeed] Create error:", err);

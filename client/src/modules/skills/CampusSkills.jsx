@@ -20,6 +20,7 @@ import { Avatar, EmptyState, MagneticButton, SectionHead, SkeletonGrid } from '.
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
+import { prependUniqueById } from '../../lib/collections.js';
 import { useSocketEvent } from '../../lib/socket.js';
 import { listItemVariants, spring } from '../../lib/motion.js';
 
@@ -70,10 +71,9 @@ export function CampusSkills() {
   const onRemoteSkill = useCallback(
     (skill) => {
       setSkills((prev) => {
-        if (prev.some((s) => s.id === skill.id)) return prev;
         if (category !== 'All' && skill.category !== category) return prev;
         if (typeFilter !== 'ALL' && skill.type !== typeFilter) return prev;
-        return [skill, ...prev];
+        return prependUniqueById(prev, skill);
       });
       toast.live('New skill listing posted', { detail: skill.title });
     },
@@ -309,7 +309,7 @@ export function CampusSkills() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={(newSkill) => {
-          setSkills((prev) => [newSkill, ...prev]);
+          setSkills((prev) => prependUniqueById(prev, newSkill));
           setCreateOpen(false);
         }}
       />

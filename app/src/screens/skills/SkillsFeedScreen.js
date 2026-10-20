@@ -9,6 +9,7 @@ import {
 import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
 import { skillsService } from "../../services/skillsService";
 import { socketService } from "../../services/socketService";
+import { prependUniqueById } from "../../utils/collections";
 import { useAuth } from "../../context/AuthContext";
 import { PopCard } from "../../components/common/PopCard";
 import { PopButton } from "../../components/common/PopButton";
@@ -50,10 +51,7 @@ export const SkillsFeedScreen = () => {
   useEffect(() => {
     socketService.connect();
     const handler = (skill) => {
-      setSkills(prev => {
-        if (prev.some(s => s.id === skill.id)) return prev;
-        return [skill, ...prev];
-      });
+      setSkills(prev => prependUniqueById(prev, skill));
     };
     socketService.on("skill:created", handler);
     return () => socketService.off("skill:created", handler);
@@ -62,7 +60,7 @@ export const SkillsFeedScreen = () => {
   const handleCreate = async (formData) => {
     try {
       const created = await skillsService.createSkill(formData);
-      setSkills(prev => [created, ...prev]);
+      setSkills(prev => prependUniqueById(prev, created));
       setCreateOpen(false);
     } catch (err) {
       console.warn("[SkillsFeed] Create error:", err);

@@ -9,6 +9,7 @@ import {
 import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
 import { tasksService } from "../../services/tasksService";
 import { socketService } from "../../services/socketService";
+import { prependUniqueById } from "../../utils/collections";
 import { useAuth } from "../../context/AuthContext";
 import { PopCard } from "../../components/common/PopCard";
 import { PopButton } from "../../components/common/PopButton";
@@ -49,10 +50,7 @@ export const TasksFeedScreen = () => {
   useEffect(() => {
     socketService.connect();
     const onCreated = (task) => {
-      setTasks(prev => {
-        if (prev.some(t => t.id === task.id)) return prev;
-        return [task, ...prev];
-      });
+      setTasks(prev => prependUniqueById(prev, task));
     };
     const onAssigned = ({ taskId, status, assignedToName }) => {
       setTasks(prev => prev.map(t => (t.id || t._id) === taskId ? { ...t, status, assignedToName } : t));
@@ -83,7 +81,7 @@ export const TasksFeedScreen = () => {
   const handleCreate = async (formData) => {
     try {
       const created = await tasksService.createTask(formData);
-      setTasks(prev => [created, ...prev]);
+      setTasks(prev => prependUniqueById(prev, created));
       setCreateOpen(false);
     } catch (err) {
       console.warn("[TasksFeed] Create error:", err);

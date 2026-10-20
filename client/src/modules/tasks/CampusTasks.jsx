@@ -19,6 +19,7 @@ import { Avatar, EmptyState, MagneticButton, SectionHead, SkeletonGrid } from '.
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
+import { prependUniqueById } from '../../lib/collections.js';
 import { useSocketEvent } from '../../lib/socket.js';
 import { listItemVariants, spring } from '../../lib/motion.js';
 
@@ -70,10 +71,9 @@ export function CampusTasks() {
   const onRemoteTaskCreated = useCallback(
     (task) => {
       setTasks((prev) => {
-        if (prev.some((t) => t.id === task.id)) return prev;
         if (category !== 'All' && task.category !== category) return prev;
         if (statusFilter !== 'ALL' && task.status !== statusFilter) return prev;
-        return [task, ...prev];
+        return prependUniqueById(prev, task);
       });
       toast.live('New errand posted', { detail: `${task.title} (₹${task.reward})` });
     },
@@ -412,7 +412,7 @@ export function CampusTasks() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={(newTask) => {
-          setTasks((prev) => [newTask, ...prev]);
+          setTasks((prev) => prependUniqueById(prev, newTask));
           setCreateOpen(false);
         }}
       />

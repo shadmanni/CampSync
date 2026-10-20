@@ -10,6 +10,7 @@ import {
 import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
 import { rideService } from "../../services/rideService";
 import { socketService } from "../../services/socketService";
+import { prependUniqueById } from "../../utils/collections";
 import { useAuth } from "../../context/AuthContext";
 import { PopCard } from "../../components/common/PopCard";
 import { PopButton } from "../../components/common/PopButton";
@@ -101,7 +102,7 @@ export const RideListScreen = () => {
   const handlePost = async (payload) => {
     try {
       const created = await rideService.createRide(payload);
-      setRides(prev => [created, ...prev]);
+      setRides(prev => prependUniqueById(prev, created));
       setPostOpen(false);
     } catch (err) {
       console.warn("[RideList] Post error:", err);

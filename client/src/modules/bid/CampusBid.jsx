@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
+import { prependUniqueById } from '../../lib/collections.js';
 import { useSocketEvent } from '../../lib/socket.js';
 import { spring, listItemVariants } from '../../lib/motion.js';
 import { money } from '../../lib/format.js';
@@ -139,7 +140,7 @@ export function CampusBid() {
 
   async function handleList(payload) {
     const created = await api.createItem(payload);
-    setItems((prev) => [created, ...prev]);
+    setItems((prev) => prependUniqueById(prev, created));
     setListOpen(false);
     toast.success('Listing is live', { detail: 'Verified students can bid on it now.' });
   }
