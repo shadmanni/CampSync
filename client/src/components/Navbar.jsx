@@ -98,7 +98,7 @@ export function Navbar({ active, onNavigate, onBrandClick }) {
               color: 'var(--ink)',
             }}
           >
-            CampusSync
+            CampSync
           </span>
         </button>
 

@@ -25,7 +25,7 @@ const FRAGMENTS = [
   'a forwarded PDF',
 ];
 
-export function Landing({ onEnter, onExplore }) {
+export function Landing({ onEnter, onExplore, isAuthenticated = false }) {
   const heroRef = useRef(null);
 
   /* Hero parallax. `offset` maps the hero's travel through the viewport to
@@ -112,7 +112,7 @@ export function Landing({ onEnter, onExplore }) {
             <div className="row wrap" style={{ gap: 12, marginTop: 30 }}>
               <MagneticButton className="btn btn-primary btn-lg" onClick={onEnter}>
                 <ShieldCheck size={17} strokeWidth={2.6} />
-                Create your campus account
+                {isAuthenticated ? 'Enter CampSync' : 'Create your campus account'}
               </MagneticButton>
 
               <button type="button" className="btn btn-ghost btn-lg" onClick={onExplore}>
@@ -188,7 +188,7 @@ export function Landing({ onEnter, onExplore }) {
       <ModuleShowcase />
 
       {/* ================= TRUST / VERIFICATION ================= */}
-      <VerificationSection onEnter={onEnter} />
+      <VerificationSection onEnter={onEnter} isAuthenticated={isAuthenticated} />
 
       {/* ================= CLOSING CTA ================= */}
       <section className="shell" style={{ paddingBlock: 'clamp(60px, 11vh, 130px)' }}>
@@ -228,7 +228,7 @@ export function Landing({ onEnter, onExplore }) {
                 style={{ justifyContent: 'center', gap: 12, marginTop: 28 }}
               >
                 <MagneticButton className="btn btn-primary btn-lg" onClick={onEnter}>
-                  Get verified
+                  {isAuthenticated ? 'Enter CampSync' : 'Create your account'}
                   <ArrowRight size={16} strokeWidth={2.6} />
                 </MagneticButton>
               </div>
@@ -572,7 +572,7 @@ const STEPS = [
   },
 ];
 
-function VerificationSection({ onEnter }) {
+function VerificationSection({ onEnter, isAuthenticated }) {
   return (
     <section
       className="shell"
@@ -645,7 +645,7 @@ function VerificationSection({ onEnter }) {
           <StatBlock value={8} label="students building it" />
           <StatBlock value={6} suffix=" wks" label="design to demo" />
           <button type="button" className="btn btn-ink" onClick={onEnter}>
-            Try the flow
+            {isAuthenticated ? 'Enter CampSync' : 'Create your account'}
             <ArrowRight size={15} strokeWidth={2.6} />
           </button>
         </div>

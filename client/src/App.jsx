@@ -77,6 +77,18 @@ function Shell() {
     [scrollTo],
   );
 
+  const enterCampus = useCallback(() => {
+    if (user) {
+      navigate('connect');
+    } else {
+      openAuth();
+    }
+  }, [user, navigate, openAuth]);
+
+  const exploreCampus = useCallback(() => {
+    navigate('connect');
+  }, [navigate]);
+
   const goHome = useCallback(() => {
     setEntered(false);
     scrollTo(0, { immediate: true });
@@ -166,7 +178,11 @@ function Shell() {
             </AnimatePresence>
           </div>
         ) : (
-          <Landing onEnter={navigate} />
+          <Landing
+            onEnter={enterCampus}
+            onExplore={exploreCampus}
+            isAuthenticated={Boolean(user)}
+          />
         )}
       </main>
 
