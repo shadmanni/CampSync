@@ -1,4 +1,4 @@
--- CampusSync PostgreSQL Database Schema (Render Managed PostgreSQL)
+-- CampusSync PostgreSQL Database Schema (Supabase PostgreSQL)
 -- campsync_db
 
 CREATE TABLE IF NOT EXISTS users (
@@ -13,12 +13,19 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS otp_verifications (
     email VARCHAR(255) PRIMARY KEY,
-    otp_code VARCHAR(16) NOT NULL,
+    otp_hash VARCHAR(64) NOT NULL,
     attempts_remaining INTEGER DEFAULT 5,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     last_requested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     request_count INTEGER DEFAULT 1
 );
+
+-- Migrate installations created by the original plaintext-OTP schema. OTPs
+-- are short-lived, so invalidating legacy rows during this migration is safe.
+ALTER TABLE otp_verifications ADD COLUMN IF NOT EXISTS otp_hash VARCHAR(64);
+ALTER TABLE otp_verifications DROP COLUMN IF EXISTS otp_code;
+DELETE FROM otp_verifications WHERE otp_hash IS NULL;
+ALTER TABLE otp_verifications ALTER COLUMN otp_hash SET NOT NULL;
 
 CREATE TABLE IF NOT EXISTS posts (
     id VARCHAR(64) PRIMARY KEY,
@@ -157,3 +164,4 @@ CREATE INDEX IF NOT EXISTS idx_skills_type ON skills(type);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category);
 CREATE INDEX IF NOT EXISTS idx_rides_available ON rides(available_seats);
+CREATE INDEX IF NOT EXISTS idx_otp_expires_at ON otp_verifications(expires_at);

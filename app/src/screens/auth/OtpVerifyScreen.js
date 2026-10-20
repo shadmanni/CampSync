@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, StyleSheet,
   TouchableOpacity, KeyboardAvoidingView, Platform
 } from "react-native";
-import { KeyRound, ArrowLeft, RotateCcw, Check, Sparkles } from "lucide-react-native";
+import { KeyRound, ArrowLeft, RotateCcw, Check } from "lucide-react-native";
 import { colors, borders, radii, spacing, typography } from "../../theme/theme";
 import { useAuth } from "../../context/AuthContext";
 import { authService } from "../../services/authService";
@@ -11,10 +11,10 @@ import { PopCard } from "../../components/common/PopCard";
 import { PopButton } from "../../components/common/PopButton";
 
 export const OtpVerifyScreen = ({ route, navigation }) => {
-  const { email, demoNotice } = route.params;
+  const { email } = route.params;
   const { login } = useAuth();
 
-  const [otp, setOtp] = useState("123456");
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [timer, setTimer] = useState(60);
@@ -85,13 +85,6 @@ export const OtpVerifyScreen = ({ route, navigation }) => {
             We've sent a 6-digit OTP code to:{"\n"}
             <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
-
-          {demoNotice ? (
-            <View style={styles.demoNoticeBox}>
-              <Sparkles size={14} color={colors.violet} />
-              <Text style={styles.demoNoticeText}>{demoNotice}</Text>
-            </View>
-          ) : null}
 
           {/* OTP Input */}
           <TextInput
@@ -201,24 +194,6 @@ const styles = StyleSheet.create({
   emailHighlight: {
     color: colors.violet,
     fontWeight: "700",
-  },
-  demoNoticeBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: colors.violetSoft,
-    borderRadius: radii.sm,
-    ...borders.card,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.lg,
-    width: "100%",
-  },
-  demoNoticeText: {
-    fontSize: 12,
-    color: colors.violet,
-    flex: 1,
-    fontWeight: "600",
   },
   otpInput: {
     width: "100%",

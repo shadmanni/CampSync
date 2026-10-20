@@ -23,11 +23,10 @@ export const EmailVerifyScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const response = await authService.requestOtp(email.trim().toLowerCase());
+      await authService.requestOtp(email.trim().toLowerCase());
       setLoading(false);
       navigation.navigate("OtpVerify", {
-        email: email.trim().toLowerCase(),
-        demoNotice: response?.demoNotice
+        email: email.trim().toLowerCase()
       });
     } catch (err) {
       setLoading(false);

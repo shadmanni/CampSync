@@ -75,7 +75,7 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 
 ### A. Users & Verification (`users` & `otp_verifications`)
 - `users`: `id`, `email`, `name`, `department`, `hostel`, `is_verified`, `created_at`
-- `otp_verifications`: `email`, `otp_code`, `attempts_remaining`, `expires_at`, `last_requested_at`, `request_count`
+- `otp_verifications`: `email`, `otp_hash`, `attempts_remaining`, `expires_at`, `last_requested_at`, `request_count`
 
 ### B. CampusConnect Posts (`posts` & `comments`)
 - `posts`: `id`, `author_id`, `author_name`, `is_anonymous`, `title`, `content`, `category`, `upvotes`, `created_at`

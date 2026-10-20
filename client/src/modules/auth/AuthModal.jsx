@@ -47,9 +47,9 @@ export function AuthModal() {
     setBusy(true);
     setError('');
     try {
-      const res = await api.requestOtp(email.trim().toLowerCase());
+      await api.requestOtp(email.trim().toLowerCase());
       setStep('otp');
-      toast.info('Verification code sent', { detail: res?.demoNotice || 'Check your college inbox.' });
+      toast.info('Verification code sent', { detail: 'Check your college inbox and spam folder.' });
       setTimeout(() => boxRefs.current[0]?.focus(), 320);
     } catch (err) {
       setError(err.message);
@@ -249,22 +249,6 @@ export function AuthModal() {
                 </button>
               </div>
 
-              <button
-                type="button"
-                className="t-faint"
-                onClick={() => onDigit(0, '123456')}
-                style={{
-                  background: 'none',
-                  border: 0,
-                  cursor: 'pointer',
-                  fontSize: 'var(--t-micro)',
-                  fontFamily: 'var(--font-mono)',
-                  textAlign: 'center',
-                  marginTop: 2,
-                }}
-              >
-                Prototype shortcut: fill 123456
-              </button>
             </motion.div>
           )}
         </AnimatePresence>

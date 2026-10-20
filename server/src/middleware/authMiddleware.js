@@ -1,7 +1,8 @@
+import "../config/env.js";
 import jwt from "jsonwebtoken";
 import { dbAdapter } from "../store/dbAdapter.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "campussync_super_secret_jwt_key_2026";
+const jwtSecret = () => process.env.JWT_SECRET || "campussync_super_secret_jwt_key_2026";
 
 /**
  * Authentication Middleware:
@@ -20,7 +21,7 @@ export const requireAuth = async (req, res, next) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret());
     const user = await dbAdapter.findUserById(decoded.id);
 
     if (!user) {
@@ -50,7 +51,7 @@ export const optionalAuth = async (req, res, next) => {
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.split(" ")[1];
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, jwtSecret());
       req.user = await dbAdapter.findUserById(decoded.id) || decoded;
     } catch {
       // Silently continue for optional auth

@@ -96,12 +96,11 @@ npx expo start --web
 
 ---
 
-## 🔐 Prototype Authentication Credentials
+## 🔐 Email OTP Authentication
 
-CampusSync uses college email domain verification (`@college.edu`, `@campus.ac.in`, `@university.edu`).
+CampusSync accepts official Manipal addresses (`@learner.manipal.edu` and `@manipal.edu`). It sends a random six-digit code through Resend, stores only an HMAC hash in Supabase, expires it after ten minutes, and consumes it after one successful verification.
 
-- **Test Email**: `alex.tech@college.edu` (or any `@*.edu` address)
-- **Demo Verification OTP**: `123456`
+Configure `DATABASE_URL`, `RESEND_API_KEY`, and `EMAIL_FROM` in `server/.env`, then run `npm run db:setup`. A fixed demo OTP is available only when the server runs with `NODE_ENV=test`; production has no bypass code.
 
 ---
 

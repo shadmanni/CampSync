@@ -1,14 +1,12 @@
+import "./config/env.js";
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
-import dotenv from "dotenv";
 import { router as apiRouter } from "./routes/api.js";
 import { dbAdapter } from "./store/dbAdapter.js";
 import { setupSocketHandlers } from "./sockets/socketHandler.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -72,7 +70,7 @@ app.get("/", (req, res) => {
   res.json({
     name: "CampusSync Unified API Engine",
     status: "Online",
-    database: dbAdapter.isPostgres ? "PostgreSQL (Render Managed)" : "In-Memory / Local",
+    database: dbAdapter.isPostgres ? "Supabase PostgreSQL" : "In-Memory / Local",
     clientsSupported: ["Web (React/Vite)", "Mobile (React Native/Expo)"],
     modules: [
       "CampusConnect",

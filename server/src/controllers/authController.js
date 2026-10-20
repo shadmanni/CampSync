@@ -1,7 +1,12 @@
+import "../config/env.js";
+import { randomInt } from "crypto";
 import jwt from "jsonwebtoken";
 import { dbAdapter } from "../store/dbAdapter.js";
+import { sendOtpEmail } from "../services/emailService.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "campussync_super_secret_jwt_key_2026";
+function jwtSecret() {
+  return process.env.JWT_SECRET || "campussync_super_secret_jwt_key_2026";
+}
 
 // College email domains allowed
 const ALLOWED_CAMPUS_DOMAINS = ["@learner.manipal.edu", "@manipal.edu"];
@@ -38,8 +43,9 @@ export const requestOtp = async (req, res, next) => {
       });
     }
 
-    // Generate 6-digit OTP (123456 for fast developer/demo testing)
-    const otpCode = "123456";
+    const otpCode = process.env.NODE_ENV === "test"
+      ? "123456"
+      : randomInt(100000, 1000000).toString();
 
     // 2. Email Rate Limiting & Cooldown check
     const otpResult = await dbAdapter.recordOtpRequest(cleanEmail, otpCode);
@@ -47,10 +53,22 @@ export const requestOtp = async (req, res, next) => {
       return res.status(429).json({ success: false, error: otpResult.error });
     }
 
+    // 3. Dispatch real email strictly to the student's respective inbox
+    const emailResult = await sendOtpEmail({ toEmail: cleanEmail, otpCode });
+
+    if (!emailResult.success) {
+      await dbAdapter.deleteOtpRequest(cleanEmail, otpCode);
+      console.warn(`⚠️ Email delivery failed to ${cleanEmail}: ${emailResult.error}`);
+      return res.status(502).json({
+        success: false,
+        error: "We could not send the verification email. Please try again shortly."
+      });
+    }
+
     return res.json({
       success: true,
-      message: "OTP verification code sent to your college email.",
-      demoNotice: "Prototype OTP code is: 123456 (Valid for 10 minutes, max 5 attempts)"
+      message: `Verification code sent to ${cleanEmail}.`,
+      simulated: emailResult.simulated || false
     });
   } catch (err) {
     next(err);
@@ -82,7 +100,7 @@ export const verifyOtp = async (req, res, next) => {
     // Sign JWT token
     const token = jwt.sign(
       { id: user.id, email: user.email, isVerified: user.isVerified },
-      JWT_SECRET,
+      jwtSecret(),
       { expiresIn: "7d" }
     );
 

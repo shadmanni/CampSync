@@ -133,9 +133,19 @@ node server/test-api.js
    ```bash
    npm run db:setup
    ```
-   *This automatically verifies connectivity, handles remote SSL, and provisions all 11 tables and indices.*
+   *This automatically verifies connectivity, handles remote SSL, and provisions all 12 tables and indices.*
 
-### 2. Render Database Setup (Alternative: Render Managed PostgreSQL)
+### 2. Transactional OTP Email (Resend)
+1. Create a Resend account, add a sending domain, and complete its DNS verification.
+2. Create an API key and add these variables to `server/.env` and the deployed server:
+   ```env
+   EMAIL_PROVIDER=resend
+   RESEND_API_KEY=re_your_api_key
+   EMAIL_FROM=CampusSync <verify@auth.your-domain.com>
+   ```
+3. Keep `ALLOW_SIMULATED_OTP=false` outside automated tests. SMTP can be configured as an optional fallback, but Gmail is not required.
+
+### 3. Render Database Setup (Alternative: Render Managed PostgreSQL)
 1. Go to [Render Dashboard](https://dashboard.render.com).
 2. Click **New +** → **PostgreSQL**.
 3. Name: `campsync-db`, Database: `campsync_db`, User: `campsync_user`.
@@ -144,7 +154,7 @@ node server/test-api.js
 6. Copy the **Internal Database URL** and set `DATABASE_URL` in `server/.env`.
 7. Run `npm run db:setup`.
 
-### 2. Render Server Setup (Node.js Web Service)
+### 4. Render Server Setup (Node.js Web Service)
 1. In Render Dashboard, click **New +** → **Web Service**.
 2. Connect your GitHub repository: `https://github.com/shadmanni/CampSync.git` (branch `abhijeet`).
 3. Settings:
@@ -156,10 +166,13 @@ node server/test-api.js
    - `PORT`: `5000`
    - `JWT_SECRET`: `campussync_super_secret_jwt_key_2026`
    - `DATABASE_URL`: *(Paste the Internal Database URL from Step 1)*
+   - `EMAIL_PROVIDER`: `resend`
+   - `RESEND_API_KEY`: *(Paste the Resend API key)*
+   - `EMAIL_FROM`: *(Sender on your verified domain)*
    - `CORS_ORIGIN`: `*` (or your Vercel URL)
 5. Click **Create Web Service**. Render will deploy your live API and WebSocket endpoint (e.g., `https://campsync-server.onrender.com`).
 
-### 3. Web Client Hosting (Vercel)
+### 5. Web Client Hosting (Vercel)
 1. Go to [Vercel](https://vercel.com) and click **Add New** → **Project**.
 2. Import `CampSync` GitHub repository.
 3. Configure Project:

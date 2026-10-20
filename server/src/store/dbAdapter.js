@@ -1,11 +1,39 @@
+import "../config/env.js";
 import pg from "pg";
 import fs from "fs";
 import path from "path";
+import { createHmac, timingSafeEqual } from "crypto";
 import { fileURLToPath } from "url";
 import { mockDb } from "./mockDb.js";
+import { envFlag } from "../config/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+function hashOtp(email, otpCode) {
+  const secret = process.env.OTP_HASH_SECRET || process.env.JWT_SECRET || "campussync-local-otp-secret";
+  return createHmac("sha256", secret)
+    .update(`${email}:${otpCode}`)
+    .digest("hex");
+}
+
+function otpMatches(storedHash, candidateHash) {
+  if (!storedHash || storedHash.length !== candidateHash.length) return false;
+  return timingSafeEqual(Buffer.from(storedHash, "utf8"), Buffer.from(candidateHash, "utf8"));
+}
+
+function normalizeUser(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    department: row.department,
+    hostel: row.hostel,
+    isVerified: row.is_verified ?? row.isVerified ?? false,
+    createdAt: row.created_at ?? row.createdAt
+  };
+}
 
 class DatabaseAdapter {
   constructor() {
@@ -20,17 +48,21 @@ class DatabaseAdapter {
   async init() {
     let databaseUrl = process.env.DATABASE_URL;
     if (databaseUrl && !databaseUrl.includes("mock")) {
+      let client = null;
       try {
         databaseUrl = databaseUrl.replace(/:\[([^\]]+)\]@/, ":$1@");
         console.log("[DB] Connecting to PostgreSQL database...");
         const isRemotePg = databaseUrl.includes("supabase") || databaseUrl.includes("pooler") || databaseUrl.includes("render") || databaseUrl.includes("sslmode=require") || process.env.NODE_ENV === "production";
         this.pool = new pg.Pool({
           connectionString: databaseUrl,
-          ssl: isRemotePg ? { rejectUnauthorized: false } : false
+          ssl: isRemotePg ? { rejectUnauthorized: false } : false,
+          max: Number.parseInt(process.env.DB_POOL_MAX || "10", 10),
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 10000
         });
 
         // Test connection
-        const client = await this.pool.connect();
+        client = await this.pool.connect();
         console.log("[DB] ✅ PostgreSQL connection established successfully.");
 
         // Run schema migrations
@@ -43,14 +75,25 @@ class DatabaseAdapter {
 
         // Seed initial data if tables are empty
         await this.seedPostgresIfEmpty(client);
-        client.release();
         this.isPostgres = true;
       } catch (err) {
-        console.warn(`[DB] ⚠️ PostgreSQL connection failed: ${err.message}. Falling back to In-Memory DB.`);
+        client?.release();
+        client = null;
+        await this.pool?.end().catch(() => {});
+        this.pool = null;
         this.isPostgres = false;
+        if (!envFlag("ALLOW_IN_MEMORY_DB", false) && process.env.NODE_ENV !== "test") {
+          throw new Error(`Supabase PostgreSQL connection failed: ${err.message}`);
+        }
+        console.warn(`[DB] ⚠️ PostgreSQL connection failed: ${err.message}. Using explicitly enabled In-Memory DB.`);
+      } finally {
+        client?.release();
       }
     } else {
-      console.log("[DB] ℹ️ Running with In-Memory store (No DATABASE_URL provided).");
+      if (!envFlag("ALLOW_IN_MEMORY_DB", false) && process.env.NODE_ENV !== "test") {
+        throw new Error("DATABASE_URL is required. Set ALLOW_IN_MEMORY_DB=true only for local demo use.");
+      }
+      console.log("[DB] ℹ️ Running with explicitly enabled In-Memory store.");
       this.isPostgres = false;
     }
   }
@@ -171,6 +214,51 @@ class DatabaseAdapter {
     const expiryMs = 10 * 60 * 1000; // 10 min OTP lifespan
     const maxAttempts = 5;
 
+    const otpHash = hashOtp(email, otpCode);
+
+    if (this.isPostgres) {
+      const client = await this.pool.connect();
+      try {
+        await client.query("BEGIN");
+        // Serializes requests for the same address even before its first row
+        // exists, preventing concurrent sends from bypassing the cooldown.
+        await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [email]);
+        const current = await client.query(
+          "SELECT last_requested_at FROM otp_verifications WHERE email = $1 FOR UPDATE",
+          [email]
+        );
+
+        if (current.rows.length > 0) {
+          const lastRequestedAt = new Date(current.rows[0].last_requested_at).getTime();
+          if (now - lastRequestedAt < cooldownMs) {
+            await client.query("ROLLBACK");
+            const waitSeconds = Math.ceil((cooldownMs - (now - lastRequestedAt)) / 1000);
+            return { success: false, error: `Please wait ${waitSeconds}s before requesting a new OTP.` };
+          }
+        }
+
+        await client.query(
+          `INSERT INTO otp_verifications
+             (email, otp_hash, attempts_remaining, expires_at, last_requested_at, request_count)
+           VALUES ($1, $2, $3, $4, $5, 1)
+           ON CONFLICT (email) DO UPDATE SET
+             otp_hash = EXCLUDED.otp_hash,
+             attempts_remaining = EXCLUDED.attempts_remaining,
+             expires_at = EXCLUDED.expires_at,
+             last_requested_at = EXCLUDED.last_requested_at,
+             request_count = otp_verifications.request_count + 1`,
+          [email, otpHash, maxAttempts, new Date(now + expiryMs), new Date(now)]
+        );
+        await client.query("COMMIT");
+        return { success: true };
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
+    }
+
     const existing = this.otpRecords.get(email);
     if (existing && now - existing.lastRequestedAt < cooldownMs) {
       const waitSeconds = Math.ceil((cooldownMs - (now - existing.lastRequestedAt)) / 1000);
@@ -178,22 +266,75 @@ class DatabaseAdapter {
     }
 
     this.otpRecords.set(email, {
-      otp: otpCode,
+      otpHash,
       attemptsRemaining: maxAttempts,
       expiresAt: now + expiryMs,
       lastRequestedAt: now
     });
 
-    return { success: true, otp: otpCode };
+    return { success: true };
   }
 
   async verifyOtpCode(email, inputOtp) {
     const now = Date.now();
+    const inputHash = hashOtp(email, inputOtp);
+
+    if (this.isPostgres) {
+      const client = await this.pool.connect();
+      try {
+        await client.query("BEGIN");
+        const result = await client.query(
+          "SELECT otp_hash, attempts_remaining, expires_at FROM otp_verifications WHERE email = $1 FOR UPDATE",
+          [email]
+        );
+        const record = result.rows[0];
+
+        if (!record) {
+          await client.query("ROLLBACK");
+          return { success: false, error: "No OTP request found for this email. Please request a new code." };
+        }
+
+        if (now > new Date(record.expires_at).getTime()) {
+          await client.query("DELETE FROM otp_verifications WHERE email = $1", [email]);
+          await client.query("COMMIT");
+          return { success: false, error: "OTP has expired. Please request a new code." };
+        }
+
+        if (record.attempts_remaining <= 0) {
+          await client.query("DELETE FROM otp_verifications WHERE email = $1", [email]);
+          await client.query("COMMIT");
+          return { success: false, error: "Too many failed attempts. Please request a new code." };
+        }
+
+        if (!otpMatches(record.otp_hash, inputHash)) {
+          const attemptsRemaining = record.attempts_remaining - 1;
+          if (attemptsRemaining <= 0) {
+            await client.query("DELETE FROM otp_verifications WHERE email = $1", [email]);
+            await client.query("COMMIT");
+            return { success: false, error: "Account locked after 5 failed attempts. Please request a new OTP." };
+          }
+          await client.query(
+            "UPDATE otp_verifications SET attempts_remaining = $2 WHERE email = $1",
+            [email, attemptsRemaining]
+          );
+          await client.query("COMMIT");
+          return { success: false, error: `Invalid OTP. ${attemptsRemaining} attempt(s) remaining.` };
+        }
+
+        await client.query("DELETE FROM otp_verifications WHERE email = $1", [email]);
+        await client.query("COMMIT");
+        return { success: true };
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
+    }
+
     const record = this.otpRecords.get(email);
 
-    // Fallback for prototype testing if no record created yet
     if (!record) {
-      if (inputOtp === "123456") return { success: true };
       return { success: false, error: "No OTP request found for this email. Please request a new code." };
     }
 
@@ -207,7 +348,7 @@ class DatabaseAdapter {
       return { success: false, error: "Too many failed attempts. This OTP has been invalidated for security. Please request a new one." };
     }
 
-    if (record.otp !== inputOtp && inputOtp !== "123456") {
+    if (!otpMatches(record.otpHash, inputHash)) {
       record.attemptsRemaining -= 1;
       if (record.attemptsRemaining <= 0) {
         this.otpRecords.delete(email);
@@ -221,11 +362,29 @@ class DatabaseAdapter {
     return { success: true };
   }
 
+  async deleteOtpRequest(email, otpCode = null) {
+    if (this.isPostgres) {
+      if (otpCode) {
+        await this.pool.query(
+          "DELETE FROM otp_verifications WHERE email = $1 AND otp_hash = $2",
+          [email, hashOtp(email, otpCode)]
+        );
+      } else {
+        await this.pool.query("DELETE FROM otp_verifications WHERE email = $1", [email]);
+      }
+      return;
+    }
+    const record = this.otpRecords.get(email);
+    if (!otpCode || (record && otpMatches(record.otpHash, hashOtp(email, otpCode)))) {
+      this.otpRecords.delete(email);
+    }
+  }
+
   async getOrCreateUser(email) {
     if (this.isPostgres) {
       const res = await this.pool.query("SELECT * FROM users WHERE email = $1", [email]);
       if (res.rows.length > 0) {
-        return res.rows[0];
+        return normalizeUser(res.rows[0]);
       }
 
       // Create new user profile from email
@@ -248,7 +407,7 @@ class DatabaseAdapter {
         "INSERT INTO users (id, email, name, department, hostel, is_verified) VALUES ($1, $2, $3, $4, $5, $6)",
         [newUser.id, newUser.email, newUser.name, newUser.department, newUser.hostel, newUser.is_verified]
       );
-      return newUser;
+      return normalizeUser(newUser);
     } else {
       let user = this.inMemoryStore.users.find(u => u.email.toLowerCase() === email.toLowerCase());
       if (!user) {
@@ -275,7 +434,7 @@ class DatabaseAdapter {
   async findUserById(id) {
     if (this.isPostgres) {
       const res = await this.pool.query("SELECT * FROM users WHERE id = $1", [id]);
-      return res.rows.length > 0 ? res.rows[0] : null;
+      return res.rows.length > 0 ? normalizeUser(res.rows[0]) : null;
     } else {
       return this.inMemoryStore.users.find(u => u.id === id) || null;
     }

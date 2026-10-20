@@ -6,6 +6,7 @@ import skillRoutes from "./skillRoutes.js";
 import taskRoutes from "./taskRoutes.js";
 import rideRoutes from "./rideRoutes.js";
 import nearbyRoutes from "./nearbyRoutes.js";
+import { dbAdapter } from "../store/dbAdapter.js";
 
 export const router = express.Router();
 
@@ -22,6 +23,7 @@ router.use("/nearby", nearbyRoutes);
 router.get("/health", (req, res) => {
   res.json({
     status: "healthy",
+    database: dbAdapter.isPostgres ? "supabase" : "memory",
     timestamp: new Date().toISOString(),
     version: "1.1.0",
     modules: [

@@ -2,16 +2,10 @@ import pg from "pg";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import dotenv from "dotenv";
+import "./src/config/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Load .env first, fallback to .env.example
-dotenv.config({ path: path.join(__dirname, ".env") });
-if (!process.env.DATABASE_URL) {
-  dotenv.config({ path: path.join(__dirname, ".env.example") });
-}
 
 async function setupSupabase() {
   let databaseUrl = process.env.DATABASE_URL;
@@ -42,7 +36,7 @@ async function setupSupabase() {
 
     console.log("⚙️ Creating database tables and indices...");
     await client.query(schemaSql);
-    console.log("🎉 All 11 tables and indices created successfully!");
+    console.log("🎉 All 12 tables and indices created successfully!");
 
     client.release();
     await pool.end();
