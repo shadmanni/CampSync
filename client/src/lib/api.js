@@ -5,7 +5,9 @@ import { seed } from './seed.js';
  * timeout controls, and bundled seed fallback when offline.
  */
 
-const TIMEOUT_MS = 6000;
+// Render free services can take about a minute to wake after 15 minutes idle.
+// Keep the request alive long enough for a cold start plus email delivery.
+const TIMEOUT_MS = 75000;
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
 /** Subscribers to connectivity changes (the offline banner listens here). */

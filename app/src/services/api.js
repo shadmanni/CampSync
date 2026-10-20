@@ -17,7 +17,8 @@ const getBaseUrl = () => {
 
 const api = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 10000,
+  // Allow a sleeping Render free service to wake before aborting the request.
+  timeout: 75000,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json"
