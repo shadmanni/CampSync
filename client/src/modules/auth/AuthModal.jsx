@@ -40,6 +40,12 @@ export function AuthModal() {
 
   const domainOk = ALLOWED.some((d) => email.trim().toLowerCase().endsWith(d)) || email.trim().toLowerCase().includes('manipal.edu');
 
+  function openOtpStep() {
+    setError('');
+    setStep('otp');
+    setTimeout(() => boxRefs.current[0]?.focus(), 320);
+  }
+
   async function sendOtp(e) {
     e?.preventDefault();
     if (!domainOk || busy) return;
@@ -48,11 +54,17 @@ export function AuthModal() {
     setError('');
     try {
       await api.requestOtp(email.trim().toLowerCase());
-      setStep('otp');
+      openOtpStep();
       toast.info('Verification code sent', { detail: 'Check your college inbox and spam folder.' });
-      setTimeout(() => boxRefs.current[0]?.focus(), 320);
     } catch (err) {
-      setError(err.message);
+      if (err.message?.toLowerCase().includes('took too long')) {
+        openOtpStep();
+        toast.info('The email may still have been delivered', {
+          detail: 'Enter the code if it arrived, or go back and request another one.',
+        });
+      } else {
+        setError(err.message);
+      }
     } finally {
       setBusy(false);
     }
@@ -182,6 +194,15 @@ export function AuthModal() {
               >
                 {busy ? <Loader2 size={16} className="spin" /> : <MailCheck size={16} strokeWidth={2.6} />}
                 {busy ? 'Sending code…' : 'Send verification code'}
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-ghost btn-block"
+                disabled={!domainOk || busy}
+                onClick={openOtpStep}
+              >
+                I already received a code
               </button>
             </motion.form>
           ) : (

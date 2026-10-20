@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, Text, TextInput, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView
+  KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity
 } from "react-native";
 import { ShieldCheck, Mail, ArrowRight, Lock, CheckCircle2 } from "lucide-react-native";
 import { colors, shadows, borders, radii, spacing, typography } from "../../theme/theme";
@@ -14,6 +14,13 @@ export const EmailVerifyScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  const openOtpScreen = () => {
+    setErrorMsg("");
+    navigation.navigate("OtpVerify", {
+      email: email.trim().toLowerCase()
+    });
+  };
+
   const handleRequestOtp = async () => {
     setErrorMsg("");
     if (!email || !email.trim()) {
@@ -25,12 +32,15 @@ export const EmailVerifyScreen = ({ navigation }) => {
     try {
       await authService.requestOtp(email.trim().toLowerCase());
       setLoading(false);
-      navigation.navigate("OtpVerify", {
-        email: email.trim().toLowerCase()
-      });
+      openOtpScreen();
     } catch (err) {
       setLoading(false);
-      setErrorMsg(err.message || "Failed to send OTP code.");
+      const message = err.message || "Failed to send OTP code.";
+      if (message.toLowerCase().includes("timeout")) {
+        openOtpScreen();
+      } else {
+        setErrorMsg(message);
+      }
     }
   };
 
@@ -87,6 +97,15 @@ export const EmailVerifyScreen = ({ navigation }) => {
               icon={ArrowRight}
               block
             />
+
+            <TouchableOpacity
+              style={styles.existingCodeButton}
+              onPress={openOtpScreen}
+              disabled={!email.trim() || loading}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.existingCodeText}>I already received a code</Text>
+            </TouchableOpacity>
           </PopCard>
         </View>
 
@@ -186,6 +205,15 @@ const styles = StyleSheet.create({
     color: colors.rose,
     marginBottom: spacing.sm,
     fontWeight: "600",
+  },
+  existingCodeButton: {
+    alignItems: "center",
+    paddingTop: spacing.md,
+  },
+  existingCodeText: {
+    fontSize: 13,
+    color: colors.violet,
+    fontWeight: "700",
   },
   domainsRow: {
     flexDirection: "row",
