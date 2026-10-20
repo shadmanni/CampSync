@@ -31,8 +31,8 @@ export const AuthProvider = ({ children }) => {
     restoreSession();
   }, []);
 
-  const login = async (email, otp) => {
-    const data = await authService.verifyOtp(email, otp);
+  const register = async (payload) => {
+    const data = await authService.register(payload);
     setToken(data.token);
     setUser(data.user);
     return data;
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: Boolean(token && user),
         onboarded,
         isLoading,
-        login,
+        register,
         enterCampus,
         logout,
         refreshProfile

@@ -14,13 +14,7 @@ function readStoredUser() {
   }
 }
 
-/**
- * Campus verification state.
- *
- * Note this starts signed *out* rather than seeding a fake logged-in student.
- * The college-email + OTP flow is the trust layer the whole product rests on,
- * so it should be walked through on stage, not skipped past.
- */
+/** Campus account state shared by every web module. */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readStoredUser);
   const [authOpen, setAuthOpen] = useState(false);

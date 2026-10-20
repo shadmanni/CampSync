@@ -24,12 +24,12 @@ CampusSync follows a **single centralized backend with dual client platforms** (
  │  ┌─────────────────────────────────────────────────────────────────────────────┐  │
  │  │              Node.js + Express + Socket.io Web Service Engine               │  │
  │  │  ┌────────────────────────┐   ┌────────────────────────┐   ┌─────────────┐  │  │
- │  │  │ Auth & OTP Middleware  │   │ Socket.io Event Engine │   │ Rate Limit  │  │  │
+ │  │  │ JWT Auth Middleware    │   │ Socket.io Event Engine │   │ Rate Limit  │  │  │
  │  │  └───────────┬────────────┘   └───────────┬────────────┘   └──────┬──────┘  │  │
  │  │              │                            │                       │         │  │
  │  │  ┌───────────▼────────────┐   ┌───────────▼────────────┐          │         │  │
  │  │  │ Core Services:         │   │ Market & Task Engine:  │          │         │  │
- │  │  │ - College Auth & OTP   │   │ - Bidding & Auctions   │          │         │  │
+ │  │  │ - Campus Account Auth  │   │ - Bidding & Auctions   │          │         │  │
  │  │  │ - Connect Social Feed  │   │ - Skill-Sharing Net    │          │         │  │
  │  │  │ - Cab Sharing Carpool  │   │ - Micro-Tasks / Gigs   │          │         │  │
  │  │  │ - Local Deals & Events │   │ - Second-Hand Store    │          │         │  │
@@ -63,7 +63,7 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 2. **Unified WebSocket Connection**:
    - Both platforms connect to the same Socket.io server instance (`socket.io-client`).
 3. **Shared Authentication (JWT)**:
-   - User logs in once from either Web or Mobile via college email OTP verification.
+   - User creates an account from Web or Mobile with a Manipal-domain email and a display name or anonymous profile.
    - Server returns signed JWT token.
    - **Web**: Persisted in `localStorage`.
    - **Android**: Persisted in `Expo SecureStore` / `AsyncStorage`.
@@ -73,9 +73,8 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 
 ## 3. Database Schema (Entities & Relationships)
 
-### A. Users & Verification (`users` & `otp_verifications`)
-- `users`: `id`, `email`, `name`, `department`, `hostel`, `is_verified`, `created_at`
-- `otp_verifications`: `email`, `otp_hash`, `attempts_remaining`, `expires_at`, `last_requested_at`, `request_count`
+### A. Users (`users`)
+- `users`: `id`, `email`, `name`, `department`, `hostel`, `is_verified`, `is_anonymous`, `created_at`
 
 ### B. CampusConnect Posts (`posts` & `comments`)
 - `posts`: `id`, `author_id`, `author_name`, `is_anonymous`, `title`, `content`, `category`, `upvotes`, `created_at`
@@ -103,9 +102,8 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 
 ## 4. API Endpoint Contracts
 
-### Auth & Campus Verification
-- `POST /api/auth/request-otp` — `{ email }` → Send 6-digit OTP code to official college email (`@learner.manipal.edu`, `@manipal.edu`) (rate-limited, 60s cooldown in prod / 2s in dev).
-- `POST /api/auth/verify-otp` — `{ email, otp }` → Returns JWT auth token & user profile (5-attempt lockout).
+### Auth & Campus Accounts
+- `POST /api/auth/register` — `{ email, name, isAnonymous }` → Creates or resumes an account and returns a JWT. Only the Manipal email domain is checked; inbox ownership is not verified.
 - `GET /api/auth/me` — Requires Bearer Token → Returns authenticated user object.
 
 ### CampusConnect Feed APIs

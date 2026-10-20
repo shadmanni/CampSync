@@ -100,9 +100,8 @@ async function readOr(path, fallback) {
 }
 
 export const api = {
-  /* ---- Auth & Campus Verification --------------------------------------- */
-  requestOtp: (email) => request('/auth/request-otp', { method: 'POST', body: { email } }),
-  verifyOtp: (email, otp) => request('/auth/verify-otp', { method: 'POST', body: { email, otp } }),
+  /* ---- Auth ------------------------------------------------------------- */
+  register: (payload) => request('/auth/register', { method: 'POST', body: payload }),
   getMe: () => request('/auth/me'),
 
   /* ---- CampusConnect (Discussions & Voting) ------------------------------ */

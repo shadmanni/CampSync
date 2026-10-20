@@ -2,7 +2,7 @@ import "../config/env.js";
 import pg from "pg";
 import fs from "fs";
 import path from "path";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { fileURLToPath } from "url";
 import { mockDb } from "./mockDb.js";
 import { envFlag } from "../config/env.js";
@@ -31,6 +31,7 @@ function normalizeUser(row) {
     department: row.department,
     hostel: row.hostel,
     isVerified: row.is_verified ?? row.isVerified ?? false,
+    isAnonymous: row.is_anonymous ?? row.isAnonymous ?? false,
     createdAt: row.created_at ?? row.createdAt
   };
 }
@@ -429,6 +430,44 @@ class DatabaseAdapter {
       }
       return user;
     }
+  }
+
+  async registerUser({ email, name, isAnonymous }) {
+    const displayName = isAnonymous ? "Anonymous Student" : name;
+
+    if (this.isPostgres) {
+      const result = await this.pool.query(
+        `INSERT INTO users (id, email, name, department, hostel, is_verified, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, TRUE, $6)
+         ON CONFLICT (email) DO UPDATE SET
+           name = EXCLUDED.name,
+           is_verified = TRUE,
+           is_anonymous = EXCLUDED.is_anonymous
+         RETURNING *`,
+        [`u-${randomUUID()}`, email, displayName, "Not specified", "Not specified", isAnonymous]
+      );
+      return normalizeUser(result.rows[0]);
+    }
+
+    let user = this.inMemoryStore.users.find(item => item.email.toLowerCase() === email.toLowerCase());
+    if (user) {
+      user.name = displayName;
+      user.isVerified = true;
+      user.isAnonymous = isAnonymous;
+    } else {
+      user = {
+        id: `u-${randomUUID()}`,
+        email,
+        name: displayName,
+        department: "Not specified",
+        hostel: "Not specified",
+        isVerified: true,
+        isAnonymous,
+        createdAt: new Date().toISOString()
+      };
+      this.inMemoryStore.users.push(user);
+    }
+    return normalizeUser(user);
   }
 
   async findUserById(id) {

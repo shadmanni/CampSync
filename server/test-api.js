@@ -1,7 +1,7 @@
 /**
  * Comprehensive Automated API & Concurrency Test Suite for CampusSync Server
  * Tests all 7 Core Pillars:
- * 1. College Auth & Rate-Limiting & JWT
+ * 1. College-domain account creation & JWT
  * 2. CampusConnect Discussions & Comments & Voting
  * 3. CampusBid & Marketplace (Fixed Price & Live Auction Bidding)
  * 4. CampusSkills (Skill-Sharing Network: Offer & Request)
@@ -87,44 +87,24 @@ async function runTests() {
   const health = await request("/api/health");
   assert(health.status === 200 && health.data.status === "healthy", "GET /api/health returned healthy");
 
-  // 2. AUTHENTICATION & RATE LIMITING
-  console.log("\n[2] Testing Authentication, OTP Verification & Rate Limiting");
+  // 2. AUTHENTICATION
+  console.log("\n[2] Testing direct campus account creation");
   
   // Non-college email should be rejected
-  const badAuth = await request("/api/auth/request-otp", {
+  const badAuth = await request("/api/auth/register", {
     method: "POST",
-    body: { email: "student@gmail.com" }
+    body: { email: "student@gmail.com", name: "Student", isAnonymous: false }
   });
   assert(badAuth.status === 400, "Non-college email correctly rejected with HTTP 400");
 
-  // Valid college email should succeed
-  const goodAuth = await request("/api/auth/request-otp", {
+  // Valid college email and name should create an account immediately
+  const registerRes = await request("/api/auth/register", {
     method: "POST",
-    body: { email: "anshuman.student@learner.manipal.edu" }
+    body: { email: "anshuman.student@learner.manipal.edu", name: "Anshuman Student", isAnonymous: false }
   });
-  assert(goodAuth.status === 200, "Valid @learner.manipal.edu email accepted with HTTP 200");
-
-  // Immediate resend should hit rate limit cooldown (60s)
-  const spamAuth = await request("/api/auth/request-otp", {
-    method: "POST",
-    body: { email: "anshuman.student@learner.manipal.edu" }
-  });
-  assert(spamAuth.status === 429, "Immediate OTP resend rejected by cooldown rate-limiter (HTTP 429)");
-
-  // Invalid OTP check
-  const wrongOtp = await request("/api/auth/verify-otp", {
-    method: "POST",
-    body: { email: "anshuman.student@learner.manipal.edu", otp: "000000" }
-  });
-  assert(wrongOtp.status === 400, "Incorrect OTP rejected with error warning");
-
-  // Valid OTP verification
-  const verifyRes = await request("/api/auth/verify-otp", {
-    method: "POST",
-    body: { email: "anshuman.student@learner.manipal.edu", otp: "123456" }
-  });
-  assert(verifyRes.status === 200, "Correct OTP issued valid JWT token");
-  jwtToken = verifyRes.data.token;
+  assert(registerRes.status === 201, "Valid @learner.manipal.edu account created with HTTP 201");
+  assert(registerRes.data.user.name === "Anshuman Student", "Display name persisted");
+  jwtToken = registerRes.data.token;
   assert(Boolean(jwtToken), "JWT Token extracted successfully");
 
   const meRes = await request("/api/auth/me");

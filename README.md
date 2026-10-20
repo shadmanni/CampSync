@@ -38,7 +38,7 @@ CampusSync eliminates fragmented college WhatsApp groups, Discord servers, and m
                            ┌──────────────────────────────────┐
                            │      CENTRAL BACKEND ENGINE      │
                            │   Node.js + Express + Socket.io  │
-                           │     JWT College-Email OTP Auth   │
+                           │   JWT Campus-Domain Account Auth │
                            │    Atomic Concurrency Safety     │
                            └────────────────┬─────────────────┘
                                             │
@@ -96,11 +96,11 @@ npx expo start --web
 
 ---
 
-## 🔐 Email OTP Authentication
+## 🔐 Campus Account Authentication
 
-CampusSync accepts official Manipal addresses (`@learner.manipal.edu` and `@manipal.edu`). It sends a random six-digit code through Resend, stores only an HMAC hash in Supabase, expires it after ten minutes, and consumes it after one successful verification.
+CampusSync accepts official Manipal addresses (`@learner.manipal.edu` and `@manipal.edu`). A student enters a display name, or chooses an anonymous profile, and receives a signed seven-day JWT immediately. No email or OTP service is required.
 
-Configure `DATABASE_URL`, `RESEND_API_KEY`, and `EMAIL_FROM` in `server/.env`, then run `npm run db:setup`. A fixed demo OTP is available only when the server runs with `NODE_ENV=test`; production has no bypass code.
+Configure `DATABASE_URL` and `JWT_SECRET` in `server/.env`, then run `npm run db:setup`. This flow checks the email domain only; it does not prove ownership of the inbox.
 
 ---
 

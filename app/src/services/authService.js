@@ -5,14 +5,9 @@ const TOKEN_KEY = "campussync_jwt";
 const USER_KEY = "campussync_user";
 
 export const authService = {
-  // 1. Request 6-digit OTP code to college email
-  async requestOtp(email) {
-    return await api.post("/auth/request-otp", { email });
-  },
-
-  // 2. Verify OTP code and receive JWT + user object
-  async verifyOtp(email, otp) {
-    const data = await api.post("/auth/verify-otp", { email, otp });
+  // Create or resume an account and receive JWT + user object.
+  async register(payload) {
+    const data = await api.post("/auth/register", payload);
     if (data.token) {
       await this.saveToken(data.token);
     }
@@ -22,12 +17,12 @@ export const authService = {
     return data;
   },
 
-  // 3. Fetch authenticated user profile
+  // Fetch authenticated user profile
   async getMe() {
     return await api.get("/auth/me");
   },
 
-  // 4. Secure Storage Helpers
+  // Secure Storage Helpers
   async saveToken(token) {
     await storage.setItem(TOKEN_KEY, token);
   },

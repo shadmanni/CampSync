@@ -12,7 +12,6 @@ import { useAuth } from "../context/AuthContext";
 
 // Auth Screens
 import { EmailVerifyScreen } from "../screens/auth/EmailVerifyScreen";
-import { OtpVerifyScreen } from "../screens/auth/OtpVerifyScreen";
 import { VerifiedDoneScreen } from "../screens/auth/VerifiedDoneScreen";
 
 // Module Screens
@@ -144,7 +143,6 @@ function AuthStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="EmailVerify" component={EmailVerifyScreen} />
-      <Stack.Screen name="OtpVerify" component={OtpVerifyScreen} />
       <Stack.Screen name="VerifiedDone" component={VerifiedDoneScreen} />
     </Stack.Navigator>
   );

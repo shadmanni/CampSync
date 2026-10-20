@@ -5,7 +5,7 @@ import {
   ShieldCheck,
   MousePointerClick,
   MailCheck,
-  KeyRound,
+  UserRound,
   Sparkles,
   ChevronDown,
 } from 'lucide-react';
@@ -112,7 +112,7 @@ export function Landing({ onEnter, onExplore }) {
             <div className="row wrap" style={{ gap: 12, marginTop: 30 }}>
               <MagneticButton className="btn btn-primary btn-lg" onClick={onEnter}>
                 <ShieldCheck size={17} strokeWidth={2.6} />
-                Verify your campus email
+                Create your campus account
               </MagneticButton>
 
               <button type="button" className="btn btn-ghost btn-lg" onClick={onExplore}>
@@ -125,7 +125,7 @@ export function Landing({ onEnter, onExplore }) {
               className="t-faint"
               style={{ marginTop: 14, fontSize: 'var(--t-micro)', fontFamily: 'var(--font-mono)' }}
             >
-              Prototype OTP is 123456 — no real mail is sent.
+              No OTP or email delivery is required.
             </p>
             </motion.div>
           </motion.div>
@@ -561,14 +561,14 @@ const STEPS = [
     body: 'Only addresses on an allow-listed campus domain get past this screen. No personal Gmail, no outsiders.',
   },
   {
-    icon: KeyRound,
-    title: 'Confirm the one-time code',
-    body: 'A six-digit OTP proves the inbox is yours. The backend issues a signed JWT that every later request carries.',
+    icon: UserRound,
+    title: 'Choose your display name',
+    body: 'Use your name or choose an anonymous profile. The backend immediately issues a signed session token.',
   },
   {
     icon: ShieldCheck,
-    title: 'You are a verified student',
-    body: 'Post anonymously if you want — the display name is hidden, but the account behind it is never anonymous to moderation.',
+    title: 'Enter CampusSync',
+    body: 'Your account is ready immediately, and the anonymous option keeps your name hidden from other students.',
   },
 ];
 

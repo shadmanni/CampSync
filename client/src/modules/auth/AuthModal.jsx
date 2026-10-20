@@ -1,279 +1,149 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, ArrowLeft, MailCheck, ShieldCheck, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2, UserRound } from 'lucide-react';
 import { Modal } from '../../components/Modal.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
 import { spring } from '../../lib/motion.js';
 
-const ALLOWED = ['@learner.manipal.edu'];
-const OTP_LENGTH = 6;
+const ALLOWED = ['@learner.manipal.edu', '@manipal.edu'];
 
-/**
- * Campus verification: email → OTP → JWT.
- *
- * Two steps that slide horizontally, so the flow reads as forward progress
- * rather than the same box swapping its contents.
- */
+/** Create a campus account without relying on email delivery. */
 export function AuthModal() {
   const { authOpen, closeAuth, login } = useAuth();
   const toast = useToast();
-
-  const [step, setStep] = useState('email');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState(Array(OTP_LENGTH).fill(''));
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const boxRefs = useRef([]);
-
-  // Reset on every open so a cancelled attempt never leaves half-typed state.
   useEffect(() => {
     if (authOpen) {
-      setStep('email');
-      setCode(Array(OTP_LENGTH).fill(''));
       setError('');
       setBusy(false);
     }
   }, [authOpen]);
 
-  const domainOk = ALLOWED.some((d) => email.trim().toLowerCase().endsWith(d)) || email.trim().toLowerCase().includes('manipal.edu');
+  const cleanEmail = email.trim().toLowerCase();
+  const domainOk = ALLOWED.some((domain) => cleanEmail.endsWith(domain));
+  const nameOk = isAnonymous || name.trim().length >= 2;
 
-  function openOtpStep() {
-    setError('');
-    setStep('otp');
-    setTimeout(() => boxRefs.current[0]?.focus(), 320);
-  }
-
-  async function sendOtp(e) {
-    e?.preventDefault();
-    if (!domainOk || busy) return;
+  async function createAccount(event) {
+    event.preventDefault();
+    if (!domainOk || !nameOk || busy) return;
 
     setBusy(true);
     setError('');
     try {
-      await api.requestOtp(email.trim().toLowerCase());
-      openOtpStep();
-      toast.info('Verification code sent', { detail: 'Check your college inbox and spam folder.' });
+      const result = await api.register({
+        email: cleanEmail,
+        name: name.trim(),
+        isAnonymous,
+      });
+      login(result.user, result.token);
+      toast.success(isAnonymous ? 'Anonymous account ready' : `Welcome, ${result.user.name}`, {
+        detail: 'You can now use CampusSync.',
+      });
     } catch (err) {
-      if (err.message?.toLowerCase().includes('took too long')) {
-        openOtpStep();
-        toast.info('The email may still have been delivered', {
-          detail: 'Enter the code if it arrived, or go back and request another one.',
-        });
-      } else {
-        setError(err.message);
-      }
+      setError(err.message || 'Could not create your account. Please try again.');
     } finally {
       setBusy(false);
     }
-  }
-
-  async function verify(codeOverride) {
-    const otp = (codeOverride || code.join('')).trim();
-    if (otp.length !== OTP_LENGTH || busy) return;
-
-    setBusy(true);
-    setError('');
-    try {
-      const res = await api.verifyOtp(email.trim().toLowerCase(), otp);
-      login(res.user, res.token);
-      toast.success(`Welcome, ${res.user?.name || 'student'}`, {
-        detail: 'Your campus identity is verified.',
-      });
-    } catch (err) {
-      setError(err.message);
-      setCode(Array(OTP_LENGTH).fill(''));
-      boxRefs.current[0]?.focus();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function onDigit(index, value) {
-    const digits = value.replace(/\D/g, '');
-    if (!digits) {
-      setCode((prev) => prev.map((c, i) => (i === index ? '' : c)));
-      return;
-    }
-
-    setCode((prev) => {
-      const next = [...prev];
-      // A paste lands in one box but should fill the rest of the row.
-      digits.split('').forEach((d, offset) => {
-        if (index + offset < OTP_LENGTH) next[index + offset] = d;
-      });
-
-      const landed = Math.min(index + digits.length, OTP_LENGTH - 1);
-      setTimeout(() => boxRefs.current[landed]?.focus(), 0);
-
-      const joined = next.join('');
-      if (joined.length === OTP_LENGTH && !joined.includes('')) {
-        setTimeout(() => verify(joined), 120);
-      }
-      return next;
-    });
-  }
-
-  function onDigitKey(index, e) {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      boxRefs.current[index - 1]?.focus();
-    }
-    if (e.key === 'ArrowLeft' && index > 0) boxRefs.current[index - 1]?.focus();
-    if (e.key === 'ArrowRight' && index < OTP_LENGTH - 1) boxRefs.current[index + 1]?.focus();
   }
 
   return (
     <Modal
       open={authOpen}
       onClose={closeAuth}
-      title={step === 'email' ? 'Verify your campus email' : 'Enter your code'}
-      subtitle={
-        step === 'email'
-          ? 'CampusSync is students only. We check the domain, then the inbox.'
-          : `We sent a ${OTP_LENGTH}-digit code to ${email}`
-      }
+      title="Join CampusSync"
+      subtitle="Enter your name and official Manipal email. No verification code is required."
       maxWidth={470}
     >
-      <div style={{ overflow: 'hidden', paddingBottom: 20 }}>
-        <AnimatePresence mode="wait" initial={false}>
-          {step === 'email' ? (
-            <motion.form
-              key="email"
-              onSubmit={sendOtp}
-              initial={{ opacity: 0, x: -28 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -28 }}
-              transition={spring.snappy}
-              className="stack"
-            >
-              <div className="field">
-                <label className="field-label" htmlFor="campus-email">
-                  College email address
-                </label>
-                <input
-                  id="campus-email"
-                  className="input"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@learner.manipal.edu"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError('');
-                  }}
-                  required
-                />
-              </div>
+      <motion.form
+        onSubmit={createAccount}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={spring.snappy}
+        className="stack"
+        style={{ paddingBottom: 20 }}
+      >
+        <div className="field">
+          <label className="field-label" htmlFor="campus-name">Display name</label>
+          <input
+            id="campus-name"
+            className="input"
+            type="text"
+            autoComplete="name"
+            placeholder={isAnonymous ? 'Anonymous Student' : 'Your name'}
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              setError('');
+            }}
+            minLength={2}
+            maxLength={80}
+            disabled={isAnonymous}
+            required={!isAnonymous}
+          />
+        </div>
 
-              <div className="row wrap" style={{ gap: 6 }}>
-                <span className="t-faint" style={{ fontSize: 'var(--t-micro)' }}>
-                  Accepted domains:
-                </span>
-                {ALLOWED.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    className="badge badge-outline"
-                    onClick={() => setEmail((prev) => `${prev.split('@')[0] || 'student'}${d}`)}
-                    style={{ cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
+        <label className="row" style={{ gap: 10, cursor: 'pointer', alignItems: 'center' }}>
+          <input
+            type="checkbox"
+            checked={isAnonymous}
+            onChange={(event) => {
+              setIsAnonymous(event.target.checked);
+              setError('');
+            }}
+          />
+          <span>
+            <strong>Keep my profile anonymous</strong>
+            <span className="t-faint" style={{ display: 'block', fontSize: 'var(--t-micro)' }}>
+              Other students will see “Anonymous Student” instead of your name.
+            </span>
+          </span>
+        </label>
 
-              <ErrorLine message={error} />
+        <div className="field">
+          <label className="field-label" htmlFor="campus-email">Manipal email address</label>
+          <input
+            id="campus-email"
+            className="input"
+            type="email"
+            autoComplete="email"
+            placeholder="you@learner.manipal.edu"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              setError('');
+            }}
+            required
+          />
+        </div>
 
-              <button
-                type="submit"
-                className="btn btn-primary btn-block btn-lg"
-                disabled={!domainOk || busy}
-                style={{ marginTop: 4 }}
-              >
-                {busy ? <Loader2 size={16} className="spin" /> : <MailCheck size={16} strokeWidth={2.6} />}
-                {busy ? 'Sending code…' : 'Send verification code'}
-              </button>
+        <div className="row wrap" style={{ gap: 6 }}>
+          <span className="t-faint" style={{ fontSize: 'var(--t-micro)' }}>Accepted domains:</span>
+          {ALLOWED.map((domain) => (
+            <span key={domain} className="badge badge-outline" style={{ fontFamily: 'var(--font-mono)' }}>
+              {domain}
+            </span>
+          ))}
+        </div>
 
-              <button
-                type="button"
-                className="btn btn-ghost btn-block"
-                disabled={!domainOk || busy}
-                onClick={openOtpStep}
-              >
-                I already received a code
-              </button>
-            </motion.form>
-          ) : (
-            <motion.div
-              key="otp"
-              initial={{ opacity: 0, x: 28 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 28 }}
-              transition={spring.snappy}
-              className="stack"
-            >
-              <div
-                role="group"
-                aria-label="Verification code"
-                style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}
-              >
-                {code.map((digit, i) => (
-                  <motion.input
-                    key={i}
-                    ref={(el) => {
-                      boxRefs.current[i] = el;
-                    }}
-                    className="input t-num"
-                    inputMode="numeric"
-                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                    maxLength={OTP_LENGTH}
-                    aria-label={`Digit ${i + 1}`}
-                    value={digit}
-                    onChange={(e) => onDigit(i, e.target.value)}
-                    onKeyDown={(e) => onDigitKey(i, e)}
-                    onFocus={(e) => e.target.select()}
-                    animate={digit ? { scale: [1, 1.09, 1] } : { scale: 1 }}
-                    transition={{ duration: 0.22 }}
-                    style={{
-                      textAlign: 'center',
-                      fontSize: '1.35rem',
-                      padding: '14px 0',
-                      minWidth: 0,
-                      flex: 1,
-                    }}
-                  />
-                ))}
-              </div>
+        <ErrorLine message={error} />
 
-              <ErrorLine message={error} />
-
-              <div className="row" style={{ gap: 10, marginTop: 4 }}>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => setStep('email')}
-                  disabled={busy}
-                >
-                  <ArrowLeft size={15} strokeWidth={2.6} />
-                  Back
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary grow"
-                  onClick={() => verify()}
-                  disabled={busy || code.join('').length !== OTP_LENGTH}
-                >
-                  {busy ? <Loader2 size={16} className="spin" /> : <ShieldCheck size={16} strokeWidth={2.6} />}
-                  {busy ? 'Verifying…' : 'Verify and enter'}
-                </button>
-              </div>
-
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+        <button
+          type="submit"
+          className="btn btn-primary btn-block btn-lg"
+          disabled={!domainOk || !nameOk || busy}
+          style={{ marginTop: 4 }}
+        >
+          {busy ? <Loader2 size={16} className="spin" /> : isAnonymous ? <UserRound size={16} /> : <ArrowRight size={16} />}
+          {busy ? 'Creating account…' : 'Create account'}
+        </button>
+      </motion.form>
     </Modal>
   );
 }
@@ -287,12 +157,7 @@ function ErrorLine({ message }) {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          style={{
-            color: 'var(--rose)',
-            fontSize: 'var(--t-small)',
-            fontWeight: 600,
-            overflow: 'hidden',
-          }}
+          style={{ color: 'var(--rose)', fontSize: 'var(--t-small)', fontWeight: 600, overflow: 'hidden' }}
         >
           {message}
         </motion.p>
