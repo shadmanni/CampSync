@@ -98,9 +98,9 @@ npx expo start --web
 
 ## 🔐 Campus Account Authentication
 
-CampusSync accepts official Manipal addresses (`@learner.manipal.edu` and `@manipal.edu`). A student enters a display name, or chooses an anonymous profile, and receives a signed seven-day JWT immediately. No email or OTP service is required.
+CampusSync accepts official Manipal addresses (`@learner.manipal.edu` and `@manipal.edu`). A student enters a display name, or chooses an anonymous profile, and protects the account with a password. Passwords are stored only as salted scrypt hashes, duplicate email registrations are rejected, and successful sign-in returns a signed seven-day JWT. No email or OTP service is required.
 
-Configure `DATABASE_URL` and `JWT_SECRET` in `server/.env`, then run `npm run db:setup`. This flow checks the email domain only; it does not prove ownership of the inbox.
+Configure `DATABASE_URL` and `JWT_SECRET` in `server/.env`, then run `npm run db:setup`. This flow checks the email domain only; it does not prove ownership of the inbox or provide email-based password recovery.
 
 ---
 

@@ -102,6 +102,7 @@ async function readOr(path, fallback) {
 export const api = {
   /* ---- Auth ------------------------------------------------------------- */
   register: (payload) => request('/auth/register', { method: 'POST', body: payload }),
+  login: (payload) => request('/auth/login', { method: 'POST', body: payload }),
   getMe: () => request('/auth/me'),
 
   /* ---- CampusConnect (Discussions & Voting) ------------------------------ */

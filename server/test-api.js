@@ -93,18 +93,52 @@ async function runTests() {
   // Non-college email should be rejected
   const badAuth = await request("/api/auth/register", {
     method: "POST",
-    body: { email: "student@gmail.com", name: "Student", isAnonymous: false }
+    body: { email: "student@gmail.com", name: "Student", password: "test-password", isAnonymous: false }
   });
   assert(badAuth.status === 400, "Non-college email correctly rejected with HTTP 400");
 
   // Valid college email and name should create an account immediately
   const registerRes = await request("/api/auth/register", {
     method: "POST",
-    body: { email: "anshuman.student@learner.manipal.edu", name: "Anshuman Student", isAnonymous: false }
+    body: { email: "anshuman.student@learner.manipal.edu", name: "Anshuman Student", password: "test-password", isAnonymous: false }
   });
   assert(registerRes.status === 201, "Valid @learner.manipal.edu account created with HTTP 201");
   assert(registerRes.data.user.name === "Anshuman Student", "Display name persisted");
-  jwtToken = registerRes.data.token;
+
+  const duplicateRegistration = await request("/api/auth/register", {
+    method: "POST",
+    body: { email: "anshuman.student@learner.manipal.edu", name: "Imposter", password: "another-password", isAnonymous: false }
+  });
+  assert(duplicateRegistration.status === 409, "Duplicate email registration rejected with HTTP 409");
+
+  const concurrentRegistrations = await Promise.all([
+    request("/api/auth/register", {
+      method: "POST",
+      body: { email: "concurrent.student@manipal.edu", name: "First Claim", password: "first-password", isAnonymous: false }
+    }),
+    request("/api/auth/register", {
+      method: "POST",
+      body: { email: "concurrent.student@manipal.edu", name: "Second Claim", password: "second-password", isAnonymous: false }
+    })
+  ]);
+  assert(
+    concurrentRegistrations.filter(result => result.status === 201).length === 1
+      && concurrentRegistrations.filter(result => result.status === 409).length === 1,
+    "Concurrent duplicate registrations create exactly one account"
+  );
+
+  const wrongLogin = await request("/api/auth/login", {
+    method: "POST",
+    body: { email: "anshuman.student@learner.manipal.edu", password: "wrong-password" }
+  });
+  assert(wrongLogin.status === 401, "Incorrect account password rejected");
+
+  const loginRes = await request("/api/auth/login", {
+    method: "POST",
+    body: { email: "anshuman.student@learner.manipal.edu", password: "test-password" }
+  });
+  assert(loginRes.status === 200, "Existing account signs in with its password");
+  jwtToken = loginRes.data.token;
   assert(Boolean(jwtToken), "JWT Token extracted successfully");
 
   const meRes = await request("/api/auth/me");

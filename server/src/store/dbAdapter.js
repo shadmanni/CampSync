@@ -432,42 +432,76 @@ class DatabaseAdapter {
     }
   }
 
-  async registerUser({ email, name, isAnonymous }) {
+  async createPasswordUser({ email, name, isAnonymous, passwordHash }) {
     const displayName = isAnonymous ? "Anonymous Student" : name;
 
     if (this.isPostgres) {
-      const result = await this.pool.query(
-        `INSERT INTO users (id, email, name, department, hostel, is_verified, is_anonymous)
-         VALUES ($1, $2, $3, $4, $5, TRUE, $6)
-         ON CONFLICT (email) DO UPDATE SET
-           name = EXCLUDED.name,
-           is_verified = TRUE,
-           is_anonymous = EXCLUDED.is_anonymous
+      const inserted = await this.pool.query(
+        `INSERT INTO users (id, email, name, department, hostel, is_verified, is_anonymous, password_hash)
+         VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7)
+         ON CONFLICT (email) DO NOTHING
          RETURNING *`,
-        [`u-${randomUUID()}`, email, displayName, "Not specified", "Not specified", isAnonymous]
+        [`u-${randomUUID()}`, email, displayName, "Not specified", "Not specified", isAnonymous, passwordHash]
       );
-      return normalizeUser(result.rows[0]);
+      if (inserted.rows[0]) {
+        return { created: true, user: normalizeUser(inserted.rows[0]), claimedLegacy: false };
+      }
+
+      // Accounts created before password authentication can be claimed once.
+      // The WHERE clause makes this atomic: only the first password wins.
+      const claimed = await this.pool.query(
+        `UPDATE users
+         SET name = $2, is_verified = TRUE, is_anonymous = $3, password_hash = $4
+         WHERE email = $1 AND password_hash IS NULL
+         RETURNING *`,
+        [email, displayName, isAnonymous, passwordHash]
+      );
+      if (claimed.rows[0]) {
+        return { created: true, user: normalizeUser(claimed.rows[0]), claimedLegacy: true };
+      }
+      return { created: false, user: null, claimedLegacy: false };
     }
 
-    let user = this.inMemoryStore.users.find(item => item.email.toLowerCase() === email.toLowerCase());
+    const user = this.inMemoryStore.users.find(item => item.email.toLowerCase() === email.toLowerCase());
     if (user) {
+      if (user.passwordHash) return { created: false, user: null, claimedLegacy: false };
       user.name = displayName;
       user.isVerified = true;
       user.isAnonymous = isAnonymous;
-    } else {
-      user = {
-        id: `u-${randomUUID()}`,
-        email,
-        name: displayName,
-        department: "Not specified",
-        hostel: "Not specified",
-        isVerified: true,
-        isAnonymous,
-        createdAt: new Date().toISOString()
-      };
-      this.inMemoryStore.users.push(user);
+      user.passwordHash = passwordHash;
+      return { created: true, user: normalizeUser(user), claimedLegacy: true };
     }
-    return normalizeUser(user);
+
+    const newUser = {
+      id: `u-${randomUUID()}`,
+      email,
+      name: displayName,
+      department: "Not specified",
+      hostel: "Not specified",
+      isVerified: true,
+      isAnonymous,
+      passwordHash,
+      createdAt: new Date().toISOString()
+    };
+    this.inMemoryStore.users.push(newUser);
+    return { created: true, user: normalizeUser(newUser), claimedLegacy: false };
+  }
+
+  async findUserCredentialsByEmail(email) {
+    if (this.isPostgres) {
+      const result = await this.pool.query(
+        "SELECT * FROM users WHERE email = $1",
+        [email]
+      );
+      if (!result.rows[0]) return null;
+      return {
+        user: normalizeUser(result.rows[0]),
+        passwordHash: result.rows[0].password_hash
+      };
+    }
+
+    const user = this.inMemoryStore.users.find(item => item.email.toLowerCase() === email.toLowerCase());
+    return user ? { user: normalizeUser(user), passwordHash: user.passwordHash || null } : null;
   }
 
   async findUserById(id) {

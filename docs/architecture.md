@@ -74,7 +74,7 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 ## 3. Database Schema (Entities & Relationships)
 
 ### A. Users (`users`)
-- `users`: `id`, `email`, `name`, `department`, `hostel`, `is_verified`, `is_anonymous`, `created_at`
+- `users`: `id`, `email`, `name`, `department`, `hostel`, `is_verified`, `is_anonymous`, `password_hash`, `created_at`
 
 ### B. CampusConnect Posts (`posts` & `comments`)
 - `posts`: `id`, `author_id`, `author_name`, `is_anonymous`, `title`, `content`, `category`, `upvotes`, `created_at`
@@ -103,7 +103,8 @@ CampusSync follows a **single centralized backend with dual client platforms** (
 ## 4. API Endpoint Contracts
 
 ### Auth & Campus Accounts
-- `POST /api/auth/register` — `{ email, name, isAnonymous }` → Creates or resumes an account and returns a JWT. Only the Manipal email domain is checked; inbox ownership is not verified.
+- `POST /api/auth/register` — `{ email, name, password, isAnonymous }` → Creates one password-protected account and returns HTTP 409 if the email is already registered.
+- `POST /api/auth/login` — `{ email, password }` → Verifies the salted scrypt password hash and returns a JWT.
 - `GET /api/auth/me` — Requires Bearer Token → Returns authenticated user object.
 
 ### CampusConnect Feed APIs

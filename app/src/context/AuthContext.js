@@ -38,6 +38,13 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const login = async (payload) => {
+    const data = await authService.login(payload);
+    setToken(data.token);
+    setUser(data.user);
+    return data;
+  };
+
   const enterCampus = () => {
     setOnboarded(true);
   };
@@ -70,6 +77,7 @@ export const AuthProvider = ({ children }) => {
         onboarded,
         isLoading,
         register,
+        login,
         enterCampus,
         logout,
         refreshProfile

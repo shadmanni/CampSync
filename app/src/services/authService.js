@@ -17,6 +17,13 @@ export const authService = {
     return data;
   },
 
+  async login(payload) {
+    const data = await api.post("/auth/login", payload);
+    if (data.token) await this.saveToken(data.token);
+    if (data.user) await this.saveUser(data.user);
+    return data;
+  },
+
   // Fetch authenticated user profile
   async getMe() {
     return await api.get("/auth/me");
